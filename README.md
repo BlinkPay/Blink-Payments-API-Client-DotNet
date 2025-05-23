@@ -397,8 +397,9 @@ var gatewayFlow = new GatewayFlow(redirectUri);
 var authFlowDetail = new AuthFlowDetail(gatewayFlow);
 var authFlow = new AuthFlow(authFlowDetail);
 var pcr = new Pcr(particulars, code, reference);
-var amount = new Amount(total, Amount.CurrencyEnum.NZD);
-var request = new EnduringConsentRequest(authFlow, startDate, endDate, period, amount);
+var maximumAmountPeriod = new Amount(total, Amount.CurrencyEnum.NZD);
+var maximumAmountPayment = new Amount(total, Amount.CurrencyEnum.NZD);
+var request = new EnduringConsentRequest(authFlow, startDate, endDate, period, maximumAmountPeriod, maximumAmountPayment, hashedCustomerIdentifier);
 
 var createConsentResponse = client.CreateEnduringConsent(request);
 ```
@@ -410,8 +411,9 @@ var gatewayFlow = new GatewayFlow(redirectUri, flowHint);
 var authFlowDetail = new AuthFlowDetail(gatewayFlow);
 var authFlow = new AuthFlow(authFlowDetail);
 var pcr = new Pcr(particulars, code, reference);
-var amount = new Amount(total, Amount.CurrencyEnum.NZD);
-var request = new EnduringConsentRequest(authFlow, startDate, endDate, period, amount);
+var maximumAmountPeriod = new Amount(total, Amount.CurrencyEnum.NZD);
+var maximumAmountPayment = new Amount(total, Amount.CurrencyEnum.NZD);
+var request = new EnduringConsentRequest(authFlow, startDate, endDate, period, maximumAmountPeriod, maximumAmountPayment, hashedCustomerIdentifier);
 
 var createConsentResponse = client.CreateEnduringConsent(request);
 ```
@@ -423,8 +425,9 @@ var gatewayFlow = new GatewayFlow(redirectUri, flowHint);
 var authFlowDetail = new AuthFlowDetail(gatewayFlow);
 var authFlow = new AuthFlow(authFlowDetail);
 var pcr = new Pcr(particulars, code, reference);
-var amount = new Amount(total, Amount.CurrencyEnum.NZD);
-var request = new EnduringConsentRequest(authFlow, startDate, endDate, period, amount);
+var maximumAmountPeriod = new Amount(total, Amount.CurrencyEnum.NZD);
+var maximumAmountPayment = new Amount(total, Amount.CurrencyEnum.NZD);
+var request = new EnduringConsentRequest(authFlow, startDate, endDate, period, maximumAmountPeriod, maximumAmountPayment, hashedCustomerIdentifier);
 
 var createConsentResponse = client.CreateEnduringConsent(request);
 ```
@@ -433,8 +436,9 @@ var createConsentResponse = client.CreateEnduringConsent(request);
 var redirectFlow = new RedirectFlow(redirectUri, bank;
 var authFlowDetail = new AuthFlowDetail(redirectFlow);
 var authFlow = new AuthFlow(authFlowDetail);
-var amount = new Amount(total, Amount.CurrencyEnum.NZD);
-var request = new EnduringConsentRequest(authFlow, startDate, endDate, period, amount);
+var maximumAmountPeriod = new Amount(total, Amount.CurrencyEnum.NZD);
+var maximumAmountPayment = new Amount(total, Amount.CurrencyEnum.NZD);
+var request = new EnduringConsentRequest(authFlow, startDate, endDate, period, maximumAmountPeriod, maximumAmountPayment, hashedCustomerIdentifier);
 
 var createConsentResponse = client.CreateEnduringConsent(request);
 ```
@@ -443,8 +447,9 @@ var createConsentResponse = client.CreateEnduringConsent(request);
 var decoupledFlow = new DecoupledFlow(bank, identifierType, identifierValue, callbackUrl);
 var authFlowDetail = new AuthFlowDetail(decoupledFlow);
 var authFlow = new AuthFlow(authFlowDetail);
-var amount = new Amount(total, Amount.CurrencyEnum.NZD);
-var request = new EnduringConsentRequest(authFlow, startDate, endDate, period, amount);
+var maximumAmountPeriod = new Amount(total, Amount.CurrencyEnum.NZD);
+var maximumAmountPayment = new Amount(total, Amount.CurrencyEnum.NZD);
+var request = new EnduringConsentRequest(authFlow, startDate, endDate, period, maximumAmountPeriod, maximumAmountPayment, hashedCustomerIdentifier);
     
 var createConsentResponse = client.CreateEnduringConsent(request);
 ```

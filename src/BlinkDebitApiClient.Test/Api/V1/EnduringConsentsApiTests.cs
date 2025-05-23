@@ -80,11 +80,12 @@ public class EnduringConsentsApiTests : IDisposable
         var redirectFlow = new RedirectFlow(RedirectUri, Bank.PNZ);
         var authFlowDetail = new AuthFlowDetail(redirectFlow);
         var authFlow = new AuthFlow(authFlowDetail);
-        var amount = new Amount("50.00", Amount.CurrencyEnum.NZD);
+        var maximumAmountPeriod = new Amount("50.00", Amount.CurrencyEnum.NZD);
+        var maximumAmountPayment = new Amount("50.00", Amount.CurrencyEnum.NZD);
         var fromTimestamp = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, NzTimeZone);
         var hashedCustomerIdentifier = "88df3798e32512ac340164f7ed133343d6dcb4888e4a91b03512dedd9800d12e";
         var request = new EnduringConsentRequest(authFlow, fromTimestamp, default,
-            Period.Fortnightly, amount, hashedCustomerIdentifier);
+            Period.Fortnightly, maximumAmountPeriod, maximumAmountPayment, hashedCustomerIdentifier);
 
         var createConsentResponse = await _instance.CreateEnduringConsentAsync(RequestHeaders, request);
 
@@ -120,6 +121,9 @@ public class EnduringConsentsApiTests : IDisposable
         Assert.NotNull(detail.MaximumAmountPeriod);
         Assert.Equal(Amount.CurrencyEnum.NZD, detail.MaximumAmountPeriod.Currency);
         Assert.Equal("50.00", detail.MaximumAmountPeriod.Total);
+        Assert.NotNull(detail.MaximumAmountPayment);
+        Assert.Equal(Amount.CurrencyEnum.NZD, detail.MaximumAmountPayment.Currency);
+        Assert.Equal("50.00", detail.MaximumAmountPayment.Total);
 
         // revoke
         await _instance.RevokeEnduringConsentAsync(consentId);
@@ -147,12 +151,16 @@ public class EnduringConsentsApiTests : IDisposable
         Assert.NotNull(detail.MaximumAmountPeriod);
         Assert.Equal(Amount.CurrencyEnum.NZD, detail.MaximumAmountPeriod.Currency);
         Assert.Equal("50.00", detail.MaximumAmountPeriod.Total);
+        Assert.NotNull(detail.MaximumAmountPayment);
+        Assert.Equal(Amount.CurrencyEnum.NZD, detail.MaximumAmountPayment.Currency);
+        Assert.Equal("50.00", detail.MaximumAmountPayment.Total);
     }
 
     /// <summary>
     /// Verify that rejected enduring consent with redirect flow is retrieved from PNZ
     /// </summary>
-    [Fact(DisplayName = "Verify that rejected enduring consent with redirect flow is retrieved from PNZ")]
+    [Fact(DisplayName = "Verify that rejected enduring consent with redirect flow is retrieved from PNZ",
+        Skip = "Disabled temporarily until a new rejected consent ID is supplied")]
     public async void GetRejectedEnduringConsentWithRedirectFlowFromPnz()
     {
         var consent = await _instance.GetEnduringConsentAsync(Guid.Parse("f0b5fc9e-afa2-441f-a9e7-e2131952b835"));
@@ -187,11 +195,12 @@ public class EnduringConsentsApiTests : IDisposable
             CallbackUrl);
         var authFlowDetail = new AuthFlowDetail(decoupledFlow);
         var authFlow = new AuthFlow(authFlowDetail);
-        var amount = new Amount("50.00", Amount.CurrencyEnum.NZD);
+        var maximumAmountPeriod = new Amount("50.00", Amount.CurrencyEnum.NZD);
+        var maximumAmountPayment = new Amount("50.00", Amount.CurrencyEnum.NZD);
         var fromTimestamp = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, NzTimeZone);
         var hashedCustomerIdentifier = "88df3798e32512ac340164f7ed133343d6dcb4888e4a91b03512dedd9800d12e";
         var request = new EnduringConsentRequest(authFlow, fromTimestamp, default,
-            Period.Fortnightly, amount, hashedCustomerIdentifier);
+            Period.Fortnightly, maximumAmountPeriod, maximumAmountPayment, hashedCustomerIdentifier);
 
         var createConsentResponse = await _instance.CreateEnduringConsentAsync(RequestHeaders, request);
 
@@ -226,6 +235,9 @@ public class EnduringConsentsApiTests : IDisposable
         Assert.NotNull(detail.MaximumAmountPeriod);
         Assert.Equal(Amount.CurrencyEnum.NZD, detail.MaximumAmountPeriod.Currency);
         Assert.Equal("50.00", detail.MaximumAmountPeriod.Total);
+        Assert.NotNull(detail.MaximumAmountPayment);
+        Assert.Equal(Amount.CurrencyEnum.NZD, detail.MaximumAmountPayment.Currency);
+        Assert.Equal("50.00", detail.MaximumAmountPayment.Total);
 
         // revoke
         await _instance.RevokeEnduringConsentAsync(consentId);
@@ -255,6 +267,9 @@ public class EnduringConsentsApiTests : IDisposable
         Assert.NotNull(detail.MaximumAmountPeriod);
         Assert.Equal(Amount.CurrencyEnum.NZD, detail.MaximumAmountPeriod.Currency);
         Assert.Equal("50.00", detail.MaximumAmountPeriod.Total);
+        Assert.NotNull(detail.MaximumAmountPayment);
+        Assert.Equal(Amount.CurrencyEnum.NZD, detail.MaximumAmountPayment.Currency);
+        Assert.Equal("50.00", detail.MaximumAmountPayment.Total);
     }
 
     /// <summary>
@@ -269,11 +284,12 @@ public class EnduringConsentsApiTests : IDisposable
         var gatewayFlow = new GatewayFlow(RedirectUri, flowHint);
         var authFlowDetail = new AuthFlowDetail(gatewayFlow);
         var authFlow = new AuthFlow(authFlowDetail);
-        var amount = new Amount("50.00", Amount.CurrencyEnum.NZD);
+        var maximumAmountPeriod = new Amount("50.00", Amount.CurrencyEnum.NZD);
+        var maximumAmountPayment = new Amount("50.00", Amount.CurrencyEnum.NZD);
         var fromTimestamp = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, NzTimeZone);
         var hashedCustomerIdentifier = "88df3798e32512ac340164f7ed133343d6dcb4888e4a91b03512dedd9800d12e";
         var request = new EnduringConsentRequest(authFlow, fromTimestamp, default,
-            Period.Fortnightly, amount, hashedCustomerIdentifier);
+            Period.Fortnightly, maximumAmountPeriod, maximumAmountPayment, hashedCustomerIdentifier);
 
         var createConsentResponse = await _instance.CreateEnduringConsentAsync(RequestHeaders, request);
 
@@ -298,9 +314,13 @@ public class EnduringConsentsApiTests : IDisposable
 
         Assert.Equal(Period.Fortnightly, request.Period);
 
-        amount = request.MaximumAmountPeriod;
-        Assert.Equal(Amount.CurrencyEnum.NZD, amount.Currency);
-        Assert.Equal("50.00", amount.Total);
+        maximumAmountPeriod = request.MaximumAmountPeriod;
+        Assert.Equal(Amount.CurrencyEnum.NZD, maximumAmountPeriod.Currency);
+        Assert.Equal("50.00", maximumAmountPeriod.Total);
+
+        maximumAmountPayment = request.MaximumAmountPayment;
+        Assert.Equal(Amount.CurrencyEnum.NZD, maximumAmountPayment.Currency);
+        Assert.Equal("50.00", maximumAmountPayment.Total);
 
         Assert.NotNull(request.Flow);
         Assert.NotNull(request.Flow.Detail);
@@ -328,9 +348,13 @@ public class EnduringConsentsApiTests : IDisposable
 
         Assert.Equal(Period.Fortnightly, request.Period);
 
-        amount = request.MaximumAmountPeriod;
-        Assert.Equal(Amount.CurrencyEnum.NZD, amount.Currency);
-        Assert.Equal("50.00", amount.Total);
+        maximumAmountPeriod = request.MaximumAmountPeriod;
+        Assert.Equal(Amount.CurrencyEnum.NZD, maximumAmountPeriod.Currency);
+        Assert.Equal("50.00", maximumAmountPeriod.Total);
+
+        maximumAmountPayment = request.MaximumAmountPayment;
+        Assert.Equal(Amount.CurrencyEnum.NZD, maximumAmountPayment.Currency);
+        Assert.Equal("50.00", maximumAmountPayment.Total);
 
         Assert.NotNull(request.Flow);
         Assert.NotNull(request.Flow.Detail);
@@ -356,11 +380,12 @@ public class EnduringConsentsApiTests : IDisposable
         var gatewayFlow = new GatewayFlow(RedirectUri, flowHint);
         var authFlowDetail = new AuthFlowDetail(gatewayFlow);
         var authFlow = new AuthFlow(authFlowDetail);
-        var amount = new Amount("50.00", Amount.CurrencyEnum.NZD);
+        var maximumAmountPeriod = new Amount("50.00", Amount.CurrencyEnum.NZD);
+        var maximumAmountPayment = new Amount("50.00", Amount.CurrencyEnum.NZD);
         var fromTimestamp = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, NzTimeZone);
         var hashedCustomerIdentifier = "88df3798e32512ac340164f7ed133343d6dcb4888e4a91b03512dedd9800d12e";
         var request = new EnduringConsentRequest(authFlow, fromTimestamp, default,
-            Period.Fortnightly, amount, hashedCustomerIdentifier);
+            Period.Fortnightly, maximumAmountPeriod, maximumAmountPayment, hashedCustomerIdentifier);
 
         var createConsentResponse = await _instance.CreateEnduringConsentAsync(RequestHeaders, request);
 
@@ -385,9 +410,13 @@ public class EnduringConsentsApiTests : IDisposable
 
         Assert.Equal(Period.Fortnightly, request.Period);
 
-        amount = request.MaximumAmountPeriod;
-        Assert.Equal(Amount.CurrencyEnum.NZD, amount.Currency);
-        Assert.Equal("50.00", amount.Total);
+        maximumAmountPeriod = request.MaximumAmountPeriod;
+        Assert.Equal(Amount.CurrencyEnum.NZD, maximumAmountPeriod.Currency);
+        Assert.Equal("50.00", maximumAmountPeriod.Total);
+
+        maximumAmountPayment = request.MaximumAmountPayment;
+        Assert.Equal(Amount.CurrencyEnum.NZD, maximumAmountPayment.Currency);
+        Assert.Equal("50.00", maximumAmountPayment.Total);
 
         Assert.NotNull(request.Flow);
         Assert.NotNull(request.Flow.Detail);
@@ -415,9 +444,13 @@ public class EnduringConsentsApiTests : IDisposable
 
         Assert.Equal(Period.Fortnightly, request.Period);
 
-        amount = request.MaximumAmountPeriod;
-        Assert.Equal(Amount.CurrencyEnum.NZD, amount.Currency);
-        Assert.Equal("50.00", amount.Total);
+        maximumAmountPeriod = request.MaximumAmountPeriod;
+        Assert.Equal(Amount.CurrencyEnum.NZD, maximumAmountPeriod.Currency);
+        Assert.Equal("50.00", maximumAmountPeriod.Total);
+
+        maximumAmountPayment = request.MaximumAmountPayment;
+        Assert.Equal(Amount.CurrencyEnum.NZD, maximumAmountPayment.Currency);
+        Assert.Equal("50.00", maximumAmountPayment.Total);
 
         Assert.NotNull(request.Flow);
         Assert.NotNull(request.Flow.Detail);

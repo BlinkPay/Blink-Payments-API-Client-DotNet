@@ -157,11 +157,12 @@ public class PaymentsApiTests : IDisposable
         var decoupledFlow = new DecoupledFlow(Bank.PNZ, IdentifierType.PhoneNumber, "+64-259531933", CallbackUrl);
         var authFlowDetail = new AuthFlowDetail(decoupledFlow);
         var authFlow = new AuthFlow(authFlowDetail);
-        var maximumAmount = new Amount("50.00", Amount.CurrencyEnum.NZD);
+        var maximumAmountPeriod = new Amount("50.00", Amount.CurrencyEnum.NZD);
+        var maximumAmountPayment = new Amount("50.00", Amount.CurrencyEnum.NZD);
         var fromTimestamp = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, NzTimeZone);
         var hashedCustomerIdentifier = "88df3798e32512ac340164f7ed133343d6dcb4888e4a91b03512dedd9800d12e";
         var request = new EnduringConsentRequest(authFlow, fromTimestamp, default,
-            Period.Fortnightly, maximumAmount, hashedCustomerIdentifier);
+            Period.Fortnightly, maximumAmountPeriod, maximumAmountPayment, hashedCustomerIdentifier);
 
         var createConsentResponse = await _enduringConsentsApi.CreateEnduringConsentAsync(RequestHeaders, request);
 
