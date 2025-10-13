@@ -94,7 +94,7 @@ public class EnduringConsentsApiTests : IDisposable
         var consentId = createConsentResponse.ConsentId;
         Assert.NotEqual(Guid.Empty, consentId);
         Assert.NotEmpty(createConsentResponse.RedirectUri);
-        Assert.StartsWith("https://obabank.glueware.dev/auth/login?oba_request=",
+        Assert.StartsWith("https://api-nomatls.apicentre.middleware.co.nz/oauth/v2.0/authorize?scope=openid%20payments&response_type=code%20id_token&request=",
             createConsentResponse.RedirectUri);
 
         // retrieve
