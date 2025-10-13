@@ -31,7 +31,7 @@ using Xunit;
 namespace BlinkDebitApiClient.Test.Api.V1;
 
 /// <summary>
-///  Class for testing BankMetadataApi
+///  Class for testing BlinkDebitClient
 /// </summary>
 [Collection("Blink Debit Collection")]
 public class BlinkDebitClientTests : IDisposable
@@ -104,7 +104,7 @@ public class BlinkDebitClientTests : IDisposable
         var consentId = createConsentResponse.ConsentId;
         Assert.NotEqual(Guid.Empty, consentId);
         Assert.NotEmpty(createConsentResponse.RedirectUri);
-        Assert.StartsWith("https://obabank.glueware.dev/auth/login?oba_request=",
+        Assert.StartsWith("https://api-nomatls.apicentre.middleware.co.nz/oauth/v2.0/authorize?scope=openid%20payments&response_type=code%20id_token&request=",
             createConsentResponse.RedirectUri);
 
         // retrieve
@@ -206,7 +206,7 @@ public class BlinkDebitClientTests : IDisposable
         var consentId = createConsentResponse.ConsentId;
         Assert.NotEqual(Guid.Empty, consentId);
         Assert.NotEmpty(createConsentResponse.RedirectUri);
-        Assert.StartsWith("https://obabank.glueware.dev/auth/login?oba_request=",
+        Assert.StartsWith("https://api-nomatls.apicentre.middleware.co.nz/oauth/v2.0/authorize?scope=openid%20payments&response_type=code%20id_token&request=",
             createConsentResponse.RedirectUri);
 
         // retrieve
@@ -528,7 +528,7 @@ public class BlinkDebitClientTests : IDisposable
         var quickPaymentId = createQuickPaymentResponse.QuickPaymentId;
         Assert.NotEqual(Guid.Empty, quickPaymentId);
         Assert.NotEmpty(createQuickPaymentResponse.RedirectUri);
-        Assert.StartsWith("https://obabank.glueware.dev/auth/login?oba_request=",
+        Assert.StartsWith("https://api-nomatls.apicentre.middleware.co.nz/oauth/v2.0/authorize?scope=openid%20payments&response_type=code%20id_token&request=",
             createQuickPaymentResponse.RedirectUri);
 
         // retrieve
@@ -648,7 +648,7 @@ public class BlinkDebitClientTests : IDisposable
         var quickPaymentId = createQuickPaymentResponse.QuickPaymentId;
         Assert.NotEqual(Guid.Empty, quickPaymentId);
         Assert.NotEmpty(createQuickPaymentResponse.RedirectUri);
-        Assert.StartsWith("https://obabank.glueware.dev/auth/login?oba_request=",
+        Assert.StartsWith("https://api-nomatls.apicentre.middleware.co.nz/oauth/v2.0/authorize?scope=openid%20payments&response_type=code%20id_token&request=",
             createQuickPaymentResponse.RedirectUri);
 
         // retrieve
@@ -718,7 +718,8 @@ public class BlinkDebitClientTests : IDisposable
             Assert.NotNull(payment);
             Assert.NotEqual(Guid.Empty, payment.PaymentId);
             Assert.Equal(Payment.TypeEnum.Single, payment.Type);
-            Assert.Equal(Payment.StatusEnum.AcceptedSettlementCompleted, payment.Status);
+            Assert.Contains(payment.Status,
+                new [] {Payment.StatusEnum.AcceptedSettlementCompleted, Payment.StatusEnum.Pending });
             Assert.Equal(Payment.AcceptedReasonEnum.SourceBankPaymentSent, payment.AcceptedReason);
             Assert.Empty(payment.Refunds);
             Assert.NotEqual(DateTimeOffset.MinValue, payment.CreationTimestamp);

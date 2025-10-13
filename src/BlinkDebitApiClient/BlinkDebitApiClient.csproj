@@ -26,17 +26,17 @@
 
   <ItemGroup>
     <PackageReference Include="JsonSubTypes" Version="2.0.1" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.5" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.5" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="9.0.5" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.5" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.5" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.9" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="Polly.Contrib.WaitAndRetry" Version="1.1.1" />
     <PackageReference Include="RestSharp" Version="112.1.0" />
-    <PackageReference Include="Polly" Version="8.5.2" />
+    <PackageReference Include="Polly" Version="8.6.4" />
     <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.10.0" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
   </ItemGroup>
 
   <ItemGroup>

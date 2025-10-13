@@ -90,7 +90,7 @@ public class QuickPaymentsApiTests : IDisposable
         var quickPaymentId = createQuickPaymentResponse.QuickPaymentId;
         Assert.NotEqual(Guid.Empty, quickPaymentId);
         Assert.NotEmpty(createQuickPaymentResponse.RedirectUri);
-        Assert.StartsWith("https://obabank.glueware.dev/auth/login?oba_request=",
+        Assert.StartsWith("https://api-nomatls.apicentre.middleware.co.nz/oauth/v2.0/authorize?scope=openid%20payments&response_type=code%20id_token&request=",
             createQuickPaymentResponse.RedirectUri);
 
         // retrieve
