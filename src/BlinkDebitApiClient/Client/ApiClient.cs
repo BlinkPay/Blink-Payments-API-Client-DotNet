@@ -554,7 +554,7 @@ public class ApiClient : ISynchronousClient, IAsynchronousClient
             Authenticator = configuration.Authenticator
         };
 
-        var client = new RestClient(clientOptions,
+        using var client = new RestClient(clientOptions,
             configureSerialization: s => s.UseSerializer(() => new CustomJsonCodec(SerializerSettings, configuration)));
 
         InterceptRequest(req, options);
@@ -653,7 +653,7 @@ public class ApiClient : ISynchronousClient, IAsynchronousClient
             Authenticator = configuration.Authenticator
         };
 
-        var client = new RestClient(clientOptions,
+        using var client = new RestClient(clientOptions,
             configureSerialization: s => s.UseSerializer(() => new CustomJsonCodec(SerializerSettings, configuration)));
 
         InterceptRequest(req, options);

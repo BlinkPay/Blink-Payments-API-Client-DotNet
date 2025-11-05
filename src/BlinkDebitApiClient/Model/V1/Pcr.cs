@@ -211,11 +211,14 @@ public class Pcr : IEquatable<Pcr>, IValidatableObject
         }
 
         // Code (string) pattern
-        var regexCode = new Regex(@"[a-zA-Z0-9- &#\?:_\/,\.']{0,12}", RegexOptions.CultureInvariant);
-        if (false == regexCode.Match(Code).Success)
+        if (Code != null)
         {
-            yield return new ValidationResult(
-                "Invalid value for Code, must match a pattern of " + regexCode, new[] { "Code" });
+            var regexCode = new Regex(@"[a-zA-Z0-9- &#\?:_\/,\.']{0,12}", RegexOptions.CultureInvariant);
+            if (false == regexCode.Match(Code).Success)
+            {
+                yield return new ValidationResult(
+                    "Invalid value for Code, must match a pattern of " + regexCode, new[] { "Code" });
+            }
         }
 
         // Reference (string) maxLength
@@ -226,11 +229,14 @@ public class Pcr : IEquatable<Pcr>, IValidatableObject
         }
 
         // Reference (string) pattern
-        var regexReference = new Regex(@"[a-zA-Z0-9- &#\?:_\/,\.']{0,12}", RegexOptions.CultureInvariant);
-        if (false == regexReference.Match(Reference).Success)
+        if (Reference != null)
         {
-            yield return new ValidationResult(
-                "Invalid value for Reference, must match a pattern of " + regexReference, new[] { "Reference" });
+            var regexReference = new Regex(@"[a-zA-Z0-9- &#\?:_\/,\.']{0,12}", RegexOptions.CultureInvariant);
+            if (false == regexReference.Match(Reference).Success)
+            {
+                yield return new ValidationResult(
+                    "Invalid value for Reference, must match a pattern of " + regexReference, new[] { "Reference" });
+            }
         }
     }
 }

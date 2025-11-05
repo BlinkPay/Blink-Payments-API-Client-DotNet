@@ -70,7 +70,7 @@ public class BankMetadataRedirectFlow : IEquatable<BankMetadataRedirectFlow>, IV
     /// </summary>
     /// <value>ISO8601 time duration until the redirect flow consent request times out</value>
     /// <example>&quot;PT01H00M00S&quot;</example>
-    [DataMember(Name = "request_timeout", IsRequired = false, EmitDefaultValue = true)]
+    [DataMember(Name = "request_timeout", IsRequired = true, EmitDefaultValue = true)]
     public string RequestTimeout { get; set; }
 
     /// <summary>

@@ -65,7 +65,23 @@ public class Configuration : IReadableConfiguration
         var status = (int)response.StatusCode;
         if (status < 400) return null;
 
+        // Check for empty or null response content
+        if (string.IsNullOrEmpty(response.RawContent))
+        {
+            logger.LogError("Received HTTP {status} with empty response body", status);
+            throw new BlinkServiceException($"HTTP {status}: Empty error response from server");
+        }
+
+        // Attempt to deserialize error response
         var body = JsonConvert.DeserializeObject<DetailErrorResponseModel>(response.RawContent);
+
+        // Check if deserialization failed
+        if (body == null)
+        {
+            logger.LogError("Could not parse error response for HTTP {status}. Content: {content}",
+                status, response.RawContent);
+            throw new BlinkServiceException($"HTTP {status}: Could not parse error response");
+        }
 
         switch (status)
         {
@@ -88,7 +104,7 @@ public class Configuration : IReadableConfiguration
             case 422:
                 logger.LogError("Status Code: {status}\nHeaders: {headers}\nBody: {body}", status,
                     SanitiseHeaders(response.Headers), body.Message);
-                throw new BlinkUnauthorisedException(body.Message);
+                throw new BlinkInvalidValueException(body.Message);
             case 429:
                 logger.LogError("Status Code: {status}\nHeaders: {headers}\nBody: {body}", status,
                     SanitiseHeaders(response.Headers), body.Message);
@@ -98,9 +114,12 @@ public class Configuration : IReadableConfiguration
                     SanitiseHeaders(response.Headers), body.Message);
                 throw new BlinkNotImplementedException(body.Message);
             case 502:
+                var correlationId = response.Headers.TryGetValue(
+                    BlinkDebitConstant.CORRELATION_ID.GetValue(), out var id)
+                    ? id.ToString()
+                    : "N/A";
                 return new BlinkServiceException($"Service call to Blink Debit failed with error: " +
-                                                 $"{body.Message}, please contact BlinkPay with the correlation ID: " +
-                                                 $"{response.Headers[BlinkDebitConstant.CORRELATION_ID.GetValue()]}");
+                                                 $"{body.Message}, please contact BlinkPay with the correlation ID: {correlationId}");
             case >= 400 and < 500:
                 logger.LogError("Status Code: {status}\nHeaders: {headers}\nBody: {body}", status,
                     SanitiseHeaders(response.Headers), body.Message);

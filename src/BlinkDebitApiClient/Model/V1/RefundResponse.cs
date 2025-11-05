@@ -56,7 +56,7 @@ public class RefundResponse : IEquatable<RefundResponse>, IValidatableObject
     /// The created refund request ID
     /// </summary>
     /// <value>The created refund request ID</value>
-    [DataMember(Name = "refund_id", IsRequired = false, EmitDefaultValue = true)]
+    [DataMember(Name = "refund_id", IsRequired = true, EmitDefaultValue = true)]
     public Guid RefundId { get; set; }
 
     /// <summary>
