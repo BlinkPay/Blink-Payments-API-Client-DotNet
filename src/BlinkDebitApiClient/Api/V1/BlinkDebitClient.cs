@@ -42,6 +42,11 @@ namespace BlinkDebitApiClient.Api.V1;
 /// </summary>
 public class BlinkDebitClient
 {
+    /// <summary>
+    /// Shared Random instance for retry jitter to improve performance.
+    /// </summary>
+    private static readonly Random RetryRandom = new Random();
+
     private readonly ILogger _logger;
 
     private readonly SingleConsentsApi _singleConsentsApi;
@@ -185,8 +190,6 @@ public class BlinkDebitClient
             return;
         }
 
-        var random = new Random();
-
         var policyBuilder = Policy<RestResponse>
             .Handle<BlinkRetryableException>()
             .Or<SocketException>()
@@ -196,13 +199,13 @@ public class BlinkDebitClient
         RetryConfiguration.RetryPolicy = policyBuilder
             .WaitAndRetry(3, // Number of retries
                 retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)) // Exponential back-off: 2, 4, 8 etc
-                                + TimeSpan.FromMilliseconds(random.Next(0, 1000)) // plus some milliseconds random delay
+                                + TimeSpan.FromMilliseconds(RetryRandom.Next(0, 1000)) // plus some milliseconds random delay
             );
 
         RetryConfiguration.AsyncRetryPolicy = policyBuilder
             .WaitAndRetryAsync(3, // Number of retries
                 retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)) // Exponential back-off: 2, 4, 8 etc
-                                + TimeSpan.FromMilliseconds(random.Next(0, 1000)) // plus some milliseconds random delay
+                                + TimeSpan.FromMilliseconds(RetryRandom.Next(0, 1000)) // plus some milliseconds random delay
             );
     }
 

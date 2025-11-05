@@ -174,6 +174,24 @@ public class Pcr : IEquatable<Pcr>, IValidatableObject
     }
 
     /// <summary>
+    /// Compiled regex pattern for validating Particulars.
+    /// </summary>
+    private static readonly Regex RegexParticulars = new Regex(@"[a-zA-Z0-9- &#\?:_\/,\.']{1,12}",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// Compiled regex pattern for validating Code.
+    /// </summary>
+    private static readonly Regex RegexCode = new Regex(@"[a-zA-Z0-9- &#\?:_\/,\.']{0,12}",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// Compiled regex pattern for validating Reference.
+    /// </summary>
+    private static readonly Regex RegexReference = new Regex(@"[a-zA-Z0-9- &#\?:_\/,\.']{0,12}",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    /// <summary>
     /// To validate all properties of the instance
     /// </summary>
     /// <param name="validationContext">Validation context</param>
@@ -195,11 +213,10 @@ public class Pcr : IEquatable<Pcr>, IValidatableObject
         }
 
         // Particulars (string) pattern
-        var regexParticulars = new Regex(@"[a-zA-Z0-9- &#\?:_\/,\.']{1,12}", RegexOptions.CultureInvariant);
-        if (false == regexParticulars.Match(Particulars).Success)
+        if (false == RegexParticulars.Match(Particulars).Success)
         {
             yield return new ValidationResult(
-                "Invalid value for Particulars, must match a pattern of " + regexParticulars,
+                "Invalid value for Particulars, must match a pattern of " + RegexParticulars,
                 new[] { "Particulars" });
         }
 
@@ -213,11 +230,10 @@ public class Pcr : IEquatable<Pcr>, IValidatableObject
         // Code (string) pattern
         if (Code != null)
         {
-            var regexCode = new Regex(@"[a-zA-Z0-9- &#\?:_\/,\.']{0,12}", RegexOptions.CultureInvariant);
-            if (false == regexCode.Match(Code).Success)
+            if (false == RegexCode.Match(Code).Success)
             {
                 yield return new ValidationResult(
-                    "Invalid value for Code, must match a pattern of " + regexCode, new[] { "Code" });
+                    "Invalid value for Code, must match a pattern of " + RegexCode, new[] { "Code" });
             }
         }
 
@@ -231,11 +247,10 @@ public class Pcr : IEquatable<Pcr>, IValidatableObject
         // Reference (string) pattern
         if (Reference != null)
         {
-            var regexReference = new Regex(@"[a-zA-Z0-9- &#\?:_\/,\.']{0,12}", RegexOptions.CultureInvariant);
-            if (false == regexReference.Match(Reference).Success)
+            if (false == RegexReference.Match(Reference).Success)
             {
                 yield return new ValidationResult(
-                    "Invalid value for Reference, must match a pattern of " + regexReference, new[] { "Reference" });
+                    "Invalid value for Reference, must match a pattern of " + RegexReference, new[] { "Reference" });
             }
         }
     }

@@ -106,7 +106,8 @@ internal class CustomJsonCodec : IRestSerializer, ISerializer, IDeserializer
     /// </summary>
     /// <param name="response">The HTTP response.</param>
     /// <param name="type">Object type.</param>
-    /// <returns>Object representation of the JSON string.</returns>
+    /// <returns>Object representation of the JSON string.
+    /// When returning a Stream type, the caller is responsible for disposing the returned FileStream or MemoryStream using a using statement.</returns>
     private object Deserialize(RestResponse response, Type type)
     {
         if (type == typeof(byte[])) // return byte array

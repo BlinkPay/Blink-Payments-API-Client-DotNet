@@ -166,6 +166,12 @@ public class Amount : IEquatable<Amount>, IValidatableObject
     }
 
     /// <summary>
+    /// Compiled regex pattern for validating the Total amount format.
+    /// </summary>
+    private static readonly Regex RegexTotal = new Regex(@"^\d{1,13}\.\d{1,2}$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    /// <summary>
     /// To validate all properties of the instance
     /// </summary>
     /// <param name="validationContext">Validation context</param>
@@ -173,10 +179,9 @@ public class Amount : IEquatable<Amount>, IValidatableObject
     IEnumerable<ValidationResult> IValidatableObject.Validate(ValidationContext validationContext)
     {
         // Total (string) pattern
-        var regexTotal = new Regex(@"^\d{1,13}\.\d{1,2}$", RegexOptions.CultureInvariant);
-        if (false == regexTotal.Match(Total).Success)
+        if (false == RegexTotal.Match(Total).Success)
         {
-            yield return new ValidationResult("Invalid value for Total, must match a pattern of " + regexTotal,
+            yield return new ValidationResult("Invalid value for Total, must match a pattern of " + RegexTotal,
                 new[] { "Total" });
         }
     }
