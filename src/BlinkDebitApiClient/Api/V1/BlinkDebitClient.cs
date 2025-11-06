@@ -155,6 +155,10 @@ public class BlinkDebitClient
         ConfigureRetry(retryEnabled != null && retryEnabled.Value);
 
         var finalConfiguration = Configuration.MergeConfigurations(GlobalConfiguration.Instance, initialConfiguration);
+
+        // Validate configuration before use - fail fast with clear errors
+        ((Configuration)finalConfiguration).Validate();
+
         var apiClient = new ApiClient(logger, finalConfiguration);
 
         _bankMetadataApi = new BankMetadataApi(logger, apiClient, apiClient, finalConfiguration);

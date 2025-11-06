@@ -708,4 +708,72 @@ public class Configuration : IReadableConfiguration
     }
 
     #endregion Static Members
+
+    #region Validation
+
+    /// <summary>
+    /// Validates the configuration settings.
+    /// Throws BlinkInvalidValueException if any validation fails.
+    /// </summary>
+    /// <exception cref="BlinkInvalidValueException">Thrown when configuration is invalid</exception>
+    public void Validate()
+    {
+        // Validate BasePath
+        if (string.IsNullOrWhiteSpace(BasePath))
+        {
+            throw new BlinkInvalidValueException("BasePath is required and cannot be null or empty");
+        }
+
+        if (!Uri.TryCreate(BasePath, UriKind.Absolute, out var baseUri))
+        {
+            throw new BlinkInvalidValueException($"BasePath '{BasePath}' is not a valid URL");
+        }
+
+        if (baseUri.Scheme != Uri.UriSchemeHttps)
+        {
+            throw new BlinkInvalidValueException(
+                $"BasePath '{BasePath}' must use HTTPS protocol for security. Found: {baseUri.Scheme}");
+        }
+
+        // Validate OAuth configuration if OAuth flow is specified
+        if (OAuthFlow.HasValue)
+        {
+            // Validate OAuth Token URL
+            if (string.IsNullOrWhiteSpace(OAuthTokenUrl))
+            {
+                throw new BlinkInvalidValueException(
+                    "OAuthTokenUrl is required when using OAuth authentication. " +
+                    "Set the BLINKPAY_CLIENT_ID environment variable or OAuthTokenUrl property.");
+            }
+
+            if (!Uri.TryCreate(OAuthTokenUrl, UriKind.Absolute, out var tokenUri))
+            {
+                throw new BlinkInvalidValueException($"OAuthTokenUrl '{OAuthTokenUrl}' is not a valid URL");
+            }
+
+            if (tokenUri.Scheme != Uri.UriSchemeHttps)
+            {
+                throw new BlinkInvalidValueException(
+                    $"OAuthTokenUrl '{OAuthTokenUrl}' must use HTTPS protocol for security. Found: {tokenUri.Scheme}");
+            }
+
+            // Validate OAuth Client ID
+            if (string.IsNullOrWhiteSpace(OAuthClientId))
+            {
+                throw new BlinkInvalidValueException(
+                    "OAuthClientId is required when using OAuth authentication. " +
+                    "Set the BLINKPAY_CLIENT_ID environment variable or OAuthClientId property.");
+            }
+
+            // Validate OAuth Client Secret
+            if (string.IsNullOrWhiteSpace(OAuthClientSecret))
+            {
+                throw new BlinkInvalidValueException(
+                    "OAuthClientSecret is required when using OAuth authentication. " +
+                    "Set the BLINKPAY_CLIENT_SECRET environment variable or OAuthClientSecret property.");
+            }
+        }
+    }
+
+    #endregion Validation
 }
