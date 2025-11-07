@@ -1,6 +1,6 @@
 # CLAUDE.md - BlinkPay .NET SDK Code Knowledge
 
-**Last Updated**: 2025-11-06
+**Last Updated**: 2025-11-07
 **Project**: Blink Debit API Client .NET SDK v1.3.0+
 **Framework**: .NET 8.0, C# 12
 
@@ -13,6 +13,34 @@ This is a .NET SDK for integrating with the BlinkPay Debit API, supporting both 
 **Repository**: BlinkPay/Blink-Debit-API-Client-DotNet
 **API Version**: v1.0.30 (OpenAPI 3.0.3)
 **Environments**: Sandbox (`https://sandbox.debit.blinkpay.co.nz`) and Production (`https://debit.blinkpay.co.nz`)
+
+---
+
+## API Design Philosophy
+
+### Async-Only Methods
+
+**All SDK methods are asynchronous** and return `Task<T>`. There are no synchronous wrapper methods.
+
+```csharp
+// ✅ Correct - Async method
+var quickPayment = await client.CreateQuickPaymentAsync(request, headers);
+
+// ❌ No synchronous alternative available
+// var quickPayment = client.CreateQuickPayment(request, headers); // Does not exist
+```
+
+**Rationale**:
+- **Performance**: I/O-bound operations (HTTP requests) benefit from async/await
+- **Scalability**: Prevents thread pool exhaustion under load
+- **Best Practices**: Aligns with modern .NET async patterns
+- **Developer Experience**: Forces proper async usage, preventing common blocking pitfalls
+
+**Implementation Notes**:
+- All public API methods end with `Async` suffix
+- Methods return `Task<T>` for operations returning data
+- Methods return `Task` for operations without return values
+- Callers must use `await` or properly handle the returned Task
 
 ---
 
@@ -425,6 +453,28 @@ var redirectFlow = new RedirectFlow(redirectUri, Bank.PNZ);
 ```csharp
 var decoupledFlow = new DecoupledFlow(Bank.PNZ, IdentifierType.PhoneNumber, "+64-123456789", callbackUrl);
 ```
+
+**PNZ Auto-Approve (Sandbox Testing)**:
+```csharp
+// Use special phone number for automated testing without manual authorization
+var decoupledFlow = new DecoupledFlow(
+    Bank.PNZ,                    // Only PNZ supports auto-approve
+    IdentifierType.PhoneNumber,
+    "+64-259531933",             // Magic phone number - triggers auto-approval
+    callbackUrl
+);
+```
+
+**Key Differences**:
+- **RedirectUri**: DecoupledFlow returns `null` for RedirectUri (no browser redirect needed)
+- **Gateway/RedirectFlow**: Returns a non-null RedirectUri for browser-based flows
+- **Status Flow**: DecoupledFlow → `AwaitingAuthorisation` → `Authorised` (skips `GatewayAwaitingSubmission`)
+
+**Auto-Approve Implementation**:
+- Phone number `+64-259531933` automatically approves consents in sandbox
+- Enables fully automated integration testing
+- Only works with `Bank.PNZ` in sandbox environment
+- Production flows require real user authorization
 
 ### 4. Consent Status Transitions
 
