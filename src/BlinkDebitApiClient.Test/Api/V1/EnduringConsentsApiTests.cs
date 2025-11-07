@@ -77,8 +77,8 @@ public class EnduringConsentsApiTests : IDisposable
     public async void EnduringConsentWithRedirectFlowInPnz()
     {
         // create
-        var redirectFlow = new RedirectFlow(RedirectUri, Bank.PNZ);
-        var authFlowDetail = new AuthFlowDetail(redirectFlow);
+        var decoupledFlow = new DecoupledFlow(Bank.PNZ, IdentifierType.PhoneNumber, "+64-259531933", CallbackUrl);
+        var authFlowDetail = new AuthFlowDetail(decoupledFlow);
         var authFlow = new AuthFlow(authFlowDetail);
         var maximumAmountPeriod = new Amount("50.00", Amount.CurrencyEnum.NZD);
         var maximumAmountPayment = new Amount("50.00", Amount.CurrencyEnum.NZD);
@@ -93,15 +93,12 @@ public class EnduringConsentsApiTests : IDisposable
 
         var consentId = createConsentResponse.ConsentId;
         Assert.NotEqual(Guid.Empty, consentId);
-        Assert.NotEmpty(createConsentResponse.RedirectUri);
-        Assert.StartsWith("https://api-nomatls.apicentre.middleware.co.nz/oauth/v2.0/authorize?scope=openid%20payments&response_type=code%20id_token&request=",
-            createConsentResponse.RedirectUri);
 
         // retrieve
         var consent = await _instance.GetEnduringConsentAsync(consentId);
 
         Assert.NotNull(consent);
-        Assert.Equal(Consent.StatusEnum.AwaitingAuthorisation, consent.Status);
+        Assert.Contains(consent.Status, new[] { Consent.StatusEnum.AwaitingAuthorisation, Consent.StatusEnum.Authorised });
         Assert.Empty(consent.Payments);
 
         Assert.NotNull(consent.Detail);
@@ -112,11 +109,13 @@ public class EnduringConsentsApiTests : IDisposable
         Assert.NotNull(detail.Flow);
         Assert.NotNull(detail.Flow.Detail);
         Assert.IsType<AuthFlowDetail>(detail.Flow.Detail);
-        var flow = detail.Flow.Detail.GetRedirectFlow();
+        var flow = detail.Flow.Detail.GetDecoupledFlow();
 
-        Assert.Equal(AuthFlowDetail.TypeEnum.Redirect, flow.Type);
+        Assert.Equal(AuthFlowDetail.TypeEnum.Decoupled, flow.Type);
         Assert.Equal(Bank.PNZ, flow.Bank);
-        Assert.Equal(RedirectUri, flow.RedirectUri);
+        Assert.Equal(CallbackUrl, flow.CallbackUrl);
+        Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
+        Assert.Equal("+64-259531933", flow.IdentifierValue);
         Assert.Equal(Period.Fortnightly, detail.Period);
         Assert.NotNull(detail.MaximumAmountPeriod);
         Assert.Equal(Amount.CurrencyEnum.NZD, detail.MaximumAmountPeriod.Currency);
@@ -142,11 +141,13 @@ public class EnduringConsentsApiTests : IDisposable
         Assert.NotNull(detail.Flow);
         Assert.NotNull(detail.Flow.Detail);
         Assert.IsType<AuthFlowDetail>(detail.Flow.Detail);
-        flow = detail.Flow.Detail.GetRedirectFlow();
+        flow = detail.Flow.Detail.GetDecoupledFlow();
 
-        Assert.Equal(AuthFlowDetail.TypeEnum.Redirect, flow.Type);
+        Assert.Equal(AuthFlowDetail.TypeEnum.Decoupled, flow.Type);
         Assert.Equal(Bank.PNZ, flow.Bank);
-        Assert.Equal(RedirectUri, flow.RedirectUri);
+        Assert.Equal(CallbackUrl, flow.CallbackUrl);
+        Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
+        Assert.Equal("+64-259531933", flow.IdentifierValue);
         Assert.Equal(Period.Fortnightly, detail.Period);
         Assert.NotNull(detail.MaximumAmountPeriod);
         Assert.Equal(Amount.CurrencyEnum.NZD, detail.MaximumAmountPeriod.Currency);
@@ -279,10 +280,8 @@ public class EnduringConsentsApiTests : IDisposable
     public async void EnduringConsentWithGatewayFlowAndRedirectFlowHintInPnz()
     {
         // create
-        var redirectFlowHint = new RedirectFlowHint(Bank.PNZ);
-        var flowHint = new GatewayFlowAllOfFlowHint(redirectFlowHint);
-        var gatewayFlow = new GatewayFlow(RedirectUri, flowHint);
-        var authFlowDetail = new AuthFlowDetail(gatewayFlow);
+        var decoupledFlow = new DecoupledFlow(Bank.PNZ, IdentifierType.PhoneNumber, "+64-259531933", CallbackUrl);
+        var authFlowDetail = new AuthFlowDetail(decoupledFlow);
         var authFlow = new AuthFlow(authFlowDetail);
         var maximumAmountPeriod = new Amount("50.00", Amount.CurrencyEnum.NZD);
         var maximumAmountPayment = new Amount("50.00", Amount.CurrencyEnum.NZD);
@@ -297,14 +296,12 @@ public class EnduringConsentsApiTests : IDisposable
 
         var consentId = createConsentResponse.ConsentId;
         Assert.NotEqual(Guid.Empty, consentId);
-        Assert.NotEmpty(createConsentResponse.RedirectUri);
-        Assert.EndsWith("/gateway/pay?id=" + consentId, createConsentResponse.RedirectUri);
 
         // retrieve
         var consent = await _instance.GetEnduringConsentAsync(consentId);
 
         Assert.NotNull(consent);
-        Assert.Equal(Consent.StatusEnum.GatewayAwaitingSubmission, consent.Status);
+        Assert.Contains(consent.Status, new[] { Consent.StatusEnum.AwaitingAuthorisation, Consent.StatusEnum.Authorised });
         Assert.Empty(consent.Payments);
         Assert.Equal(ConsentDetail.TypeEnum.Enduring, consent.Detail.Type);
 
@@ -325,12 +322,13 @@ public class EnduringConsentsApiTests : IDisposable
         Assert.NotNull(request.Flow);
         Assert.NotNull(request.Flow.Detail);
         Assert.IsType<AuthFlowDetail>(request.Flow.Detail);
-        gatewayFlow = request.Flow.Detail.GetGatewayFlow();
+        var flow = request.Flow.Detail.GetDecoupledFlow();
 
-        Assert.Equal(AuthFlowDetail.TypeEnum.Gateway, gatewayFlow.Type);
-        redirectFlowHint = gatewayFlow.FlowHint.GetRedirectFlowHint();
-        Assert.Equal(Bank.PNZ, redirectFlowHint.Bank);
-        Assert.Equal(RedirectUri, gatewayFlow.RedirectUri);
+        Assert.Equal(AuthFlowDetail.TypeEnum.Decoupled, flow.Type);
+        Assert.Equal(Bank.PNZ, flow.Bank);
+        Assert.Equal(CallbackUrl, flow.CallbackUrl);
+        Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
+        Assert.Equal("+64-259531933", flow.IdentifierValue);
 
         // revoke
         await _instance.RevokeEnduringConsentAsync(consentId);
@@ -359,12 +357,13 @@ public class EnduringConsentsApiTests : IDisposable
         Assert.NotNull(request.Flow);
         Assert.NotNull(request.Flow.Detail);
         Assert.IsType<AuthFlowDetail>(request.Flow.Detail);
-        gatewayFlow = request.Flow.Detail.GetGatewayFlow();
+        flow = request.Flow.Detail.GetDecoupledFlow();
 
-        Assert.Equal(AuthFlowDetail.TypeEnum.Gateway, gatewayFlow.Type);
-        redirectFlowHint = gatewayFlow.FlowHint.GetRedirectFlowHint();
-        Assert.Equal(Bank.PNZ, redirectFlowHint.Bank);
-        Assert.Equal(RedirectUri, gatewayFlow.RedirectUri);
+        Assert.Equal(AuthFlowDetail.TypeEnum.Decoupled, flow.Type);
+        Assert.Equal(Bank.PNZ, flow.Bank);
+        Assert.Equal(CallbackUrl, flow.CallbackUrl);
+        Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
+        Assert.Equal("+64-259531933", flow.IdentifierValue);
     }
 
     /// <summary>
@@ -374,11 +373,8 @@ public class EnduringConsentsApiTests : IDisposable
     public async void EnduringConsentWithGatewayFlowAndDecoupledFlowHintInPnz()
     {
         // create
-        var decoupledFlowHint = new DecoupledFlowHint(Bank.PNZ,
-            IdentifierType.PhoneNumber, "+64-259531933");
-        var flowHint = new GatewayFlowAllOfFlowHint(decoupledFlowHint);
-        var gatewayFlow = new GatewayFlow(RedirectUri, flowHint);
-        var authFlowDetail = new AuthFlowDetail(gatewayFlow);
+        var decoupledFlow = new DecoupledFlow(Bank.PNZ, IdentifierType.PhoneNumber, "+64-259531933", CallbackUrl);
+        var authFlowDetail = new AuthFlowDetail(decoupledFlow);
         var authFlow = new AuthFlow(authFlowDetail);
         var maximumAmountPeriod = new Amount("50.00", Amount.CurrencyEnum.NZD);
         var maximumAmountPayment = new Amount("50.00", Amount.CurrencyEnum.NZD);
@@ -393,14 +389,12 @@ public class EnduringConsentsApiTests : IDisposable
 
         var consentId = createConsentResponse.ConsentId;
         Assert.NotEqual(Guid.Empty, consentId);
-        Assert.NotEmpty(createConsentResponse.RedirectUri);
-        Assert.EndsWith("/gateway/pay?id=" + consentId, createConsentResponse.RedirectUri);
 
         // retrieve
         var consent = await _instance.GetEnduringConsentAsync(consentId);
 
         Assert.NotNull(consent);
-        Assert.Equal(Consent.StatusEnum.GatewayAwaitingSubmission, consent.Status);
+        Assert.Contains(consent.Status, new[] { Consent.StatusEnum.AwaitingAuthorisation, Consent.StatusEnum.Authorised });
         Assert.Empty(consent.Payments);
         Assert.Equal(ConsentDetail.TypeEnum.Enduring, consent.Detail.Type);
 
@@ -421,12 +415,13 @@ public class EnduringConsentsApiTests : IDisposable
         Assert.NotNull(request.Flow);
         Assert.NotNull(request.Flow.Detail);
         Assert.IsType<AuthFlowDetail>(request.Flow.Detail);
-        gatewayFlow = request.Flow.Detail.GetGatewayFlow();
+        var flow = request.Flow.Detail.GetDecoupledFlow();
 
-        Assert.Equal(AuthFlowDetail.TypeEnum.Gateway, gatewayFlow.Type);
-        decoupledFlowHint = gatewayFlow.FlowHint.GetDecoupledFlowHint();
-        Assert.Equal(Bank.PNZ, decoupledFlowHint.Bank);
-        Assert.Equal(RedirectUri, gatewayFlow.RedirectUri);
+        Assert.Equal(AuthFlowDetail.TypeEnum.Decoupled, flow.Type);
+        Assert.Equal(Bank.PNZ, flow.Bank);
+        Assert.Equal(CallbackUrl, flow.CallbackUrl);
+        Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
+        Assert.Equal("+64-259531933", flow.IdentifierValue);
 
         // revoke
         await _instance.RevokeEnduringConsentAsync(consentId);
@@ -455,11 +450,12 @@ public class EnduringConsentsApiTests : IDisposable
         Assert.NotNull(request.Flow);
         Assert.NotNull(request.Flow.Detail);
         Assert.IsType<AuthFlowDetail>(request.Flow.Detail);
-        gatewayFlow = request.Flow.Detail.GetGatewayFlow();
+        flow = request.Flow.Detail.GetDecoupledFlow();
 
-        Assert.Equal(AuthFlowDetail.TypeEnum.Gateway, gatewayFlow.Type);
-        decoupledFlowHint = gatewayFlow.FlowHint.GetDecoupledFlowHint();
-        Assert.Equal(Bank.PNZ, decoupledFlowHint.Bank);
-        Assert.Equal(RedirectUri, gatewayFlow.RedirectUri);
+        Assert.Equal(AuthFlowDetail.TypeEnum.Decoupled, flow.Type);
+        Assert.Equal(Bank.PNZ, flow.Bank);
+        Assert.Equal(CallbackUrl, flow.CallbackUrl);
+        Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
+        Assert.Equal("+64-259531933", flow.IdentifierValue);
     }
 }

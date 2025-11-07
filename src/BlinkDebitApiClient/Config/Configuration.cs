@@ -65,7 +65,23 @@ public class Configuration : IReadableConfiguration
         var status = (int)response.StatusCode;
         if (status < 400) return null;
 
+        // Check for empty or null response content
+        if (string.IsNullOrEmpty(response.RawContent))
+        {
+            logger.LogError("Received HTTP {status} with empty response body", status);
+            throw new BlinkServiceException($"HTTP {status}: Empty error response from server");
+        }
+
+        // Attempt to deserialize error response
         var body = JsonConvert.DeserializeObject<DetailErrorResponseModel>(response.RawContent);
+
+        // Check if deserialization failed
+        if (body == null)
+        {
+            logger.LogError("Could not parse error response for HTTP {status}. Content: {content}",
+                status, response.RawContent);
+            throw new BlinkServiceException($"HTTP {status}: Could not parse error response");
+        }
 
         switch (status)
         {
@@ -88,7 +104,7 @@ public class Configuration : IReadableConfiguration
             case 422:
                 logger.LogError("Status Code: {status}\nHeaders: {headers}\nBody: {body}", status,
                     SanitiseHeaders(response.Headers), body.Message);
-                throw new BlinkUnauthorisedException(body.Message);
+                throw new BlinkInvalidValueException(body.Message);
             case 429:
                 logger.LogError("Status Code: {status}\nHeaders: {headers}\nBody: {body}", status,
                     SanitiseHeaders(response.Headers), body.Message);
@@ -98,9 +114,12 @@ public class Configuration : IReadableConfiguration
                     SanitiseHeaders(response.Headers), body.Message);
                 throw new BlinkNotImplementedException(body.Message);
             case 502:
+                var correlationId = response.Headers.TryGetValue(
+                    BlinkDebitConstant.CORRELATION_ID.GetValue(), out var id)
+                    ? id.ToString()
+                    : "N/A";
                 return new BlinkServiceException($"Service call to Blink Debit failed with error: " +
-                                                 $"{body.Message}, please contact BlinkPay with the correlation ID: " +
-                                                 $"{response.Headers[BlinkDebitConstant.CORRELATION_ID.GetValue()]}");
+                                                 $"{body.Message}, please contact BlinkPay with the correlation ID: {correlationId}");
             case >= 400 and < 500:
                 logger.LogError("Status Code: {status}\nHeaders: {headers}\nBody: {body}", status,
                     SanitiseHeaders(response.Headers), body.Message);
@@ -689,4 +708,72 @@ public class Configuration : IReadableConfiguration
     }
 
     #endregion Static Members
+
+    #region Validation
+
+    /// <summary>
+    /// Validates the configuration settings.
+    /// Throws BlinkInvalidValueException if any validation fails.
+    /// </summary>
+    /// <exception cref="BlinkInvalidValueException">Thrown when configuration is invalid</exception>
+    public void Validate()
+    {
+        // Validate BasePath
+        if (string.IsNullOrWhiteSpace(BasePath))
+        {
+            throw new BlinkInvalidValueException("BasePath is required and cannot be null or empty");
+        }
+
+        if (!Uri.TryCreate(BasePath, UriKind.Absolute, out var baseUri))
+        {
+            throw new BlinkInvalidValueException($"BasePath '{BasePath}' is not a valid URL");
+        }
+
+        if (baseUri.Scheme != Uri.UriSchemeHttps)
+        {
+            throw new BlinkInvalidValueException(
+                $"BasePath '{BasePath}' must use HTTPS protocol for security. Found: {baseUri.Scheme}");
+        }
+
+        // Validate OAuth configuration if OAuth flow is specified
+        if (OAuthFlow.HasValue)
+        {
+            // Validate OAuth Token URL
+            if (string.IsNullOrWhiteSpace(OAuthTokenUrl))
+            {
+                throw new BlinkInvalidValueException(
+                    "OAuthTokenUrl is required when using OAuth authentication. " +
+                    "Set the BLINKPAY_CLIENT_ID environment variable or OAuthTokenUrl property.");
+            }
+
+            if (!Uri.TryCreate(OAuthTokenUrl, UriKind.Absolute, out var tokenUri))
+            {
+                throw new BlinkInvalidValueException($"OAuthTokenUrl '{OAuthTokenUrl}' is not a valid URL");
+            }
+
+            if (tokenUri.Scheme != Uri.UriSchemeHttps)
+            {
+                throw new BlinkInvalidValueException(
+                    $"OAuthTokenUrl '{OAuthTokenUrl}' must use HTTPS protocol for security. Found: {tokenUri.Scheme}");
+            }
+
+            // Validate OAuth Client ID
+            if (string.IsNullOrWhiteSpace(OAuthClientId))
+            {
+                throw new BlinkInvalidValueException(
+                    "OAuthClientId is required when using OAuth authentication. " +
+                    "Set the BLINKPAY_CLIENT_ID environment variable or OAuthClientId property.");
+            }
+
+            // Validate OAuth Client Secret
+            if (string.IsNullOrWhiteSpace(OAuthClientSecret))
+            {
+                throw new BlinkInvalidValueException(
+                    "OAuthClientSecret is required when using OAuth authentication. " +
+                    "Set the BLINKPAY_CLIENT_SECRET environment variable or OAuthClientSecret property.");
+            }
+        }
+    }
+
+    #endregion Validation
 }

@@ -147,7 +147,7 @@ public class Consent : IEquatable<Consent>, IValidatableObject
     /// The time that the status was last updated
     /// </summary>
     /// <value>The time that the status was last updated</value>
-    [DataMember(Name = "status_updated_timestamp", IsRequired = false, EmitDefaultValue = true)]
+    [DataMember(Name = "status_updated_timestamp", IsRequired = true, EmitDefaultValue = true)]
     public DateTimeOffset StatusUpdatedTimestamp { get; set; }
 
     /// <summary>

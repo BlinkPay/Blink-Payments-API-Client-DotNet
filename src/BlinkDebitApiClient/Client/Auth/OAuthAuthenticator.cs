@@ -70,22 +70,35 @@ public class OAuthAuthenticator : AuthenticatorBase
     /// <returns>An authentication parameter.</returns>
     protected override async ValueTask<Parameter> GetAuthenticationParameter(string accessToken)
     {
-        Token = string.IsNullOrEmpty(Token) ? await GetToken().ConfigureAwait(false) : Token;
-        
-        // check if access token has expired
-        if (!string.IsNullOrEmpty(Token))
+        // Check if token needs to be obtained or refreshed
+        if (string.IsNullOrEmpty(Token) || IsTokenExpired(Token))
         {
-            var handler = new JwtSecurityTokenHandler();
-            var token = handler.ReadJwtToken(Token.Replace(BlinkDebitConstant.BEARER.GetValue(), string.Empty));
-            var expiry = token.ValidTo;
-            var now = DateTimeOffset.UtcNow;
-            if (expiry > now)
-            {
-                Token = string.IsNullOrEmpty(Token) ? await GetToken().ConfigureAwait(false) : Token;
-            }
+            Token = await GetToken().ConfigureAwait(false);
         }
 
         return new HeaderParameter(KnownHeaders.Authorization, Token);
+    }
+
+    /// <summary>
+    /// Checks if the token has expired or is about to expire (within 5 minutes).
+    /// </summary>
+    /// <param name="token">The token to check.</param>
+    /// <returns>True if the token is expired or about to expire, false otherwise.</returns>
+    private bool IsTokenExpired(string token)
+    {
+        try
+        {
+            var handler = new JwtSecurityTokenHandler();
+            var jwtToken = handler.ReadJwtToken(token.Replace(BlinkDebitConstant.BEARER.GetValue(), string.Empty));
+            // Add 5-minute buffer to refresh before actual expiration
+            var expiryWithBuffer = jwtToken.ValidTo.AddMinutes(-5);
+            return expiryWithBuffer <= DateTimeOffset.UtcNow;
+        }
+        catch
+        {
+            // If token cannot be parsed, consider it expired
+            return true;
+        }
     }
 
     /// <summary>
@@ -94,7 +107,7 @@ public class OAuthAuthenticator : AuthenticatorBase
     /// <returns>An authentication token.</returns>
     private async Task<string> GetToken()
     {
-        var client = new RestClient(_tokenUrl,
+        using var client = new RestClient(_tokenUrl,
             configureSerialization: s => s.UseSerializer(() => new CustomJsonCodec(_serializerSettings, _configuration)));
 
         var request = new RestRequest()

@@ -57,10 +57,10 @@ var amount = new Amount("0.01", Amount.CurrencyEnum.NZD);
 var request = new QuickPaymentRequest(authFlow, pcr, amount);
 
 try {
-    var qpCreateResponse = client.CreateQuickPayment(request);
+    var qpCreateResponse = await client.CreateQuickPaymentAsync(request);
     logger.LogInformation("Redirect URL: {}", qpCreateResponse.RedirectUri); // Redirect the consumer to this URL
     var qpId = qpCreateResponse.QuickPaymentId;
-    var qpResponse = client.AwaitSuccessfulQuickPaymentOrThrowException(qpId, 300); // Will throw an exception if the payment was not successful after 5min
+    var qpResponse = await client.AwaitSuccessfulQuickPaymentAsync(qpId, 300); // Will throw an exception if the payment was not successful after 5min
 } catch (BlinkServiceException e) {
     logger.LogError("Encountered an error: " + e.Message);
 }
@@ -211,10 +211,10 @@ var pcr = new Pcr("particulars", "code", "reference");
 var amount = new Amount("0.01", Amount.CurrencyEnum.NZD);
 var request = new QuickPaymentRequest(authFlow, pcr, amount);
 
-var qpCreateResponse = client.CreateQuickPayment(request);
+var qpCreateResponse = await client.CreateQuickPaymentAsync(request);
 _logger.LogInformation("Redirect URL: {}", qpCreateResponse.RedirectUri); // Redirect the consumer to this URL
 var qpId = qpCreateResponse.QuickPaymentId;
-var qpResponse = client.AwaitSuccessfulQuickPaymentOrThrowException(qpId, 300); // Will throw an exception if the payment was not successful after 5min
+var qpResponse = await client.AwaitSuccessfulQuickPaymentAsync(qpId, 300); // Will throw an exception if the payment was not successful after 5min
 ```
 
 ### Single consent followed by one-off payment, using Gateway flow
@@ -226,14 +226,14 @@ var pcr = new Pcr("particulars");
 var amount = new Amount("0.01", Amount.CurrencyEnum.NZD);
 var request = new SingleConsentRequest(authFlow, pcr, amount);
 
-var createConsentResponse = client.CreateSingleConsent(request);
+var createConsentResponse = await client.CreateSingleConsentAsync(request);
 var redirectUri = createConsentResponse.RedirectUri; // Redirect the consumer to this URL
 var paymentRequest = new PaymentRequest
 {
     ConsentId = createConsentResponse.ConsentId
 };
-var paymentResponse = client.CreatePayment(paymentRequest);
-_logger.LogInformation("Payment Status: {}", client.GetPayment(paymentResponse.PaymentId).Status);
+var paymentResponse = await client.CreatePaymentAsync(paymentRequest);
+_logger.LogInformation("Payment Status: {}", (await client.GetPaymentAsync(paymentResponse.PaymentId)).Status);
 // TODO inspect the payment result status
 ```
 
@@ -241,7 +241,7 @@ _logger.LogInformation("Payment Status: {}", client.GetPayment(paymentResponse.P
 ### Bank Metadata
 Supplies the supported banks and supported flows on your account.
 ```csharp
-var bankMetadataList = client.GetMeta();
+var bankMetadataList = await client.GetMetaAsync();
 ```
 
 ### Quick Payments
@@ -254,7 +254,7 @@ var pcr = new Pcr(particulars, code, reference);
 var amount = new Amount(total, Amount.CurrencyEnum.NZD);
 var request = new QuickPaymentRequest(authFlow, pcr, amount);
 
-var createQuickPaymentResponse = client.CreateQuickPayment(request);
+var createQuickPaymentResponse = await client.CreateQuickPaymentAsync(request);
 ```
 #### Gateway Flow - Redirect Flow Hint
 ```csharp
@@ -267,7 +267,7 @@ var pcr = new Pcr(particulars, code, reference);
 var amount = new Amount(total, Amount.CurrencyEnum.NZD);
 var request = new QuickPaymentRequest(authFlow, pcr, amount);
 
-var createQuickPaymentResponse = client.CreateQuickPayment(request);
+var createQuickPaymentResponse = await client.CreateQuickPaymentAsync(request);
 ```
 #### Gateway Flow - Decoupled Flow Hint
 ```csharp
@@ -280,7 +280,7 @@ var pcr = new Pcr(particulars, code, reference);
 var amount = new Amount(total, Amount.CurrencyEnum.NZD);
 var request = new QuickPaymentRequest(authFlow, pcr, amount);
 
-var createQuickPaymentResponse = client.CreateQuickPayment(request);
+var createQuickPaymentResponse = await client.CreateQuickPaymentAsync(request);
 ```
 #### Redirect Flow
 ```csharp
@@ -291,7 +291,7 @@ var pcr = new Pcr(particulars, code, reference);
 var amount = new Amount(total, Amount.CurrencyEnum.NZD);
 var request = new QuickPaymentRequest(authFlow, pcr, amount);
 
-var createQuickPaymentResponse = client.CreateQuickPayment(request);
+var createQuickPaymentResponse = await client.CreateQuickPaymentAsync(request);
 ```
 #### Decoupled Flow
 ```csharp
@@ -302,15 +302,15 @@ var pcr = new Pcr(particulars, code, reference);
 var amount = new Amount(total, Amount.CurrencyEnum.NZD);
 var request = new QuickPaymentRequest(authFlow, pcr, amount);
 
-var createQuickPaymentResponse = client.CreateQuickPayment(request);
+var createQuickPaymentResponse = await client.CreateQuickPaymentAsync(request);
 ```
 #### Retrieval
 ```csharp
-var quickPaymentResponse = client.GetQuickPayment(quickPaymentId);
+var quickPaymentResponse = await client.GetQuickPaymentAsync(quickPaymentId);
 ```
 #### Revocation
 ```csharp
-client.RevokeQuickPayment(quickPaymentId);
+await client.RevokeQuickPaymentAsync(quickPaymentId);
 ```
 
 ### Single/One-Off Consents
@@ -323,7 +323,7 @@ var pcr = new Pcr(particulars, code, reference);
 var amount = new Amount(total, Amount.CurrencyEnum.NZD);
 var request = new SingleConsentRequest(authFlow, pcr, amount);
 
-var createConsentResponse = client.CreateSingleConsent(request);
+var createConsentResponse = await client.CreateSingleConsentAsync(request);
 ```
 #### Gateway Flow - Redirect Flow Hint
 ```csharp
@@ -336,7 +336,7 @@ var pcr = new Pcr(particulars, code, reference);
 var amount = new Amount(total, Amount.CurrencyEnum.NZD);
 var request = new SingleConsentRequest(authFlow, pcr, amount);
 
-var createConsentResponse = client.CreateSingleConsent(request);
+var createConsentResponse = await client.CreateSingleConsentAsync(request);
 ```
 #### Gateway Flow - Decoupled Flow Hint
 ```csharp
@@ -349,7 +349,7 @@ var pcr = new Pcr(particulars, code, reference);
 var amount = new Amount(total, Amount.CurrencyEnum.NZD);
 var request = new SingleConsentRequest(authFlow, pcr, amount);
 
-CreateConsentResponse createConsentResponse = client.CreateSingleConsent(request);
+CreateConsentResponse createConsentResponse = await client.CreateSingleConsentAsync(request);
 ```
 #### Redirect Flow
 Suitable for most consents.
@@ -361,7 +361,7 @@ var pcr = new Pcr(particulars, code, reference);
 var amount = new Amount(total, Amount.CurrencyEnum.NZD);
 var request = new SingleConsentRequest(authFlow, pcr, amount);
 
-var createConsentResponse = client.CreateSingleConsent(request);
+var createConsentResponse = await client.CreateSingleConsentAsync(request);
 ```
 #### Decoupled Flow
 This flow type allows better support for mobile by allowing the supply of a mobile number or previous consent ID to identify the customer with their bank.
@@ -375,16 +375,16 @@ var pcr = new Pcr(particulars, code, reference);
 var amount = new Amount(total, Amount.CurrencyEnum.NZD);
 var request = new SingleConsentRequest(authFlow, pcr, amount);
 
-var createConsentResponse = client.CreateSingleConsent(request);
+var createConsentResponse = await client.CreateSingleConsentAsync(request);
 ```
 #### Retrieval
 Get the consent including its status
 ```csharp
-var consent = client.GetSingleConsent(consentId);
+var consent = await client.GetSingleConsentAsync(consentId);
 ```
 #### Revocation
 ```csharp
-client.RevokeSingleConsent(consentId);
+await client.RevokeSingleConsentAsync(consentId);
 ```
 
 ### Blink AutoPay - Enduring/Recurring Consents
@@ -401,7 +401,7 @@ var maximumAmountPeriod = new Amount(total, Amount.CurrencyEnum.NZD);
 var maximumAmountPayment = new Amount(total, Amount.CurrencyEnum.NZD);
 var request = new EnduringConsentRequest(authFlow, startDate, endDate, period, maximumAmountPeriod, maximumAmountPayment, hashedCustomerIdentifier);
 
-var createConsentResponse = client.CreateEnduringConsent(request);
+var createConsentResponse = await client.CreateEnduringConsentAsync(request);
 ```
 #### Gateway Flow - Redirect Flow Hint
 ```csharp
@@ -415,7 +415,7 @@ var maximumAmountPeriod = new Amount(total, Amount.CurrencyEnum.NZD);
 var maximumAmountPayment = new Amount(total, Amount.CurrencyEnum.NZD);
 var request = new EnduringConsentRequest(authFlow, startDate, endDate, period, maximumAmountPeriod, maximumAmountPayment, hashedCustomerIdentifier);
 
-var createConsentResponse = client.CreateEnduringConsent(request);
+var createConsentResponse = await client.CreateEnduringConsentAsync(request);
 ```
 #### Gateway Flow - Decoupled Flow Hint
 ```csharp
@@ -429,7 +429,7 @@ var maximumAmountPeriod = new Amount(total, Amount.CurrencyEnum.NZD);
 var maximumAmountPayment = new Amount(total, Amount.CurrencyEnum.NZD);
 var request = new EnduringConsentRequest(authFlow, startDate, endDate, period, maximumAmountPeriod, maximumAmountPayment, hashedCustomerIdentifier);
 
-var createConsentResponse = client.CreateEnduringConsent(request);
+var createConsentResponse = await client.CreateEnduringConsentAsync(request);
 ```
 #### Redirect Flow
 ```csharp
@@ -440,7 +440,7 @@ var maximumAmountPeriod = new Amount(total, Amount.CurrencyEnum.NZD);
 var maximumAmountPayment = new Amount(total, Amount.CurrencyEnum.NZD);
 var request = new EnduringConsentRequest(authFlow, startDate, endDate, period, maximumAmountPeriod, maximumAmountPayment, hashedCustomerIdentifier);
 
-var createConsentResponse = client.CreateEnduringConsent(request);
+var createConsentResponse = await client.CreateEnduringConsentAsync(request);
 ```
 #### Decoupled Flow
 ```csharp
@@ -451,15 +451,15 @@ var maximumAmountPeriod = new Amount(total, Amount.CurrencyEnum.NZD);
 var maximumAmountPayment = new Amount(total, Amount.CurrencyEnum.NZD);
 var request = new EnduringConsentRequest(authFlow, startDate, endDate, period, maximumAmountPeriod, maximumAmountPayment, hashedCustomerIdentifier);
     
-var createConsentResponse = client.CreateEnduringConsent(request);
+var createConsentResponse = await client.CreateEnduringConsentAsync(request);
 ```
 #### Retrieval
 ```csharp
-var consent = client.GetEnduringConsent(consentId);
+var consent = await client.GetEnduringConsentAsync(consentId);
 ```
 #### Revocation
 ```csharp
-client.RevokeEnduringConsent(consentId);
+await client.RevokeEnduringConsentAsync(consentId);
 ```
 
 ### Payments
@@ -471,7 +471,7 @@ var paymentRequest = new PaymentRequest
     ConsentId = consentId
 };
 
-var paymentResponse = client.CreatePayment(request);
+var paymentResponse = await client.CreatePaymentAsync(request);
 ```
 #### Enduring/Recurring
 If you already have an approved consent, you can run a Payment against that consent at the frequency as authorised in the consent.
@@ -480,11 +480,11 @@ var pcr = new Pcr(particulars, code, reference);
 var amount = new Amount(total, Amount.CurrencyEnum.NZD);
 var paymentRequest = new PaymentRequest(consentId, pcr, amount);
 
-var paymentResponse = client.CreatePayment(request);
+var paymentResponse = await client.CreatePaymentAsync(request);
 ```
 #### Retrieval
 ```csharp
-var payment = client.GetPayment(paymentId);
+var payment = await client.GetPaymentAsync(paymentId);
 ```
 
 ### Refunds
@@ -492,14 +492,14 @@ var payment = client.GetPayment(paymentId);
 ```csharp
 var request = new AccountNumberRefundRequest(paymentId);
 
-var refundResponse = client.CreateRefund(request);
+var refundResponse = await client.CreateRefundAsync(request);
 ```
 #### Full Refund (Not yet implemented)
 ```csharp
 var pcr = new Pcr(particulars, code, reference);
 var request = new FullRefundRequest(paymentId, pcr, redirectUri);
 
-var refundResponse = client.CreateRefund(request);
+var refundResponse = await client.CreateRefundAsync(request);
 ```
 #### Partial Refund (Not yet implemented)
 ```csharp
@@ -507,9 +507,9 @@ var amount = new Amount(total, Amount.CurrencyEnum.NZD);
 var pcr = new Pcr(particulars, code, reference);
 var request = new PartialRefundRequest(paymentId, amount pcr, redirectUri);
 
-var refundResponse = client.CreateRefund(request);
+var refundResponse = await client.CreateRefundAsync(request);
 ```
 #### Retrieval
 ```csharp
-var refund = client.GetRefund(refundId);
+var refund = await client.GetRefundAsync(refundId);
 ```

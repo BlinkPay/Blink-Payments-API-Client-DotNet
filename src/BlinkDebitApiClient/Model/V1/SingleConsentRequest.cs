@@ -143,17 +143,17 @@ public class SingleConsentRequest : ConsentDetail, IEquatable<SingleConsentReque
                    Flow == input.Flow ||
                    (Flow != null &&
                     Flow.Equals(input.Flow))
-               ) && base.Equals(input) &&
+               ) &&
                (
                    Pcr == input.Pcr ||
                    (Pcr != null &&
                     Pcr.Equals(input.Pcr))
-               ) && base.Equals(input) &&
+               ) &&
                (
                    Amount == input.Amount ||
                    (Amount != null &&
                     Amount.Equals(input.Amount))
-               ) && base.Equals(input) && 
+               ) &&
                (
                    HashedCustomerIdentifier == input.HashedCustomerIdentifier ||
                    (HashedCustomerIdentifier != null &&

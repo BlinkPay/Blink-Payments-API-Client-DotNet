@@ -173,31 +173,31 @@ public class EnduringConsentRequest : ConsentDetail, IEquatable<EnduringConsentR
                    Flow == input.Flow ||
                    (Flow != null &&
                     Flow.Equals(input.Flow))
-               ) && base.Equals(input) &&
+               ) &&
                (
                    FromTimestamp == input.FromTimestamp ||
                    (FromTimestamp != null &&
                     FromTimestamp.Equals(input.FromTimestamp))
-               ) && base.Equals(input) &&
+               ) &&
                (
                    ExpiryTimestamp == input.ExpiryTimestamp ||
                    (ExpiryTimestamp != null &&
                     ExpiryTimestamp.Equals(input.ExpiryTimestamp))
-               ) && base.Equals(input) &&
+               ) &&
                (
                    Period == input.Period ||
                    Period.Equals(input.Period)
-               ) && base.Equals(input) &&
+               ) &&
                (
                    MaximumAmountPeriod == input.MaximumAmountPeriod ||
                    (MaximumAmountPeriod != null &&
                     MaximumAmountPeriod.Equals(input.MaximumAmountPeriod))
-               ) && base.Equals(input) &&
+               ) &&
                (
                    MaximumAmountPayment == input.MaximumAmountPayment ||
                    (MaximumAmountPayment != null &&
                     MaximumAmountPayment.Equals(input.MaximumAmountPayment))
-               ) && base.Equals(input) && 
+               ) &&
                (
                    HashedCustomerIdentifier == input.HashedCustomerIdentifier ||
                    (HashedCustomerIdentifier != null &&

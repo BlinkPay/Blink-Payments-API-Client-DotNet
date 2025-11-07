@@ -67,7 +67,7 @@ public class BankMetadataFeaturesDecoupledFlow : IEquatable<BankMetadataFeatures
     /// Whether the Decoupled Flow is enabled.
     /// </summary>
     /// <value>Whether the Decoupled Flow is enabled.</value>
-    [DataMember(Name = "enabled", IsRequired = false, EmitDefaultValue = true)]
+    [DataMember(Name = "enabled", IsRequired = true, EmitDefaultValue = true)]
     public bool Enabled { get; set; }
 
     /// <summary>
@@ -82,7 +82,7 @@ public class BankMetadataFeaturesDecoupledFlow : IEquatable<BankMetadataFeatures
     /// </summary>
     /// <value>ISO8601 time duration until the decoupled flow consent request times out</value>
     /// <example>&quot;P1DT00H00M00S&quot;</example>
-    [DataMember(Name = "request_timeout", IsRequired = false, EmitDefaultValue = true)]
+    [DataMember(Name = "request_timeout", IsRequired = true, EmitDefaultValue = true)]
     public string RequestTimeout { get; set; }
 
     /// <summary>

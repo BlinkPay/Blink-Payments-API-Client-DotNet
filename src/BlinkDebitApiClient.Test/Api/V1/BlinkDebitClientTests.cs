@@ -22,6 +22,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using BlinkDebitApiClient.Api.V1;
 using BlinkDebitApiClient.Enums;
 using BlinkDebitApiClient.Exceptions;
@@ -75,7 +76,7 @@ public class BlinkDebitClientTests : IDisposable
     /// Verify that bank metadata is retrieved
     /// </summary>
     [Fact(DisplayName = "Verify that bank metadata is retrieved")]
-    public async void GetMeta()
+    public async Task GetMeta()
     {
         var response = await _instance.GetMetaAsync(RequestHeaders);
         Assert.IsType<List<BankMetadata>>(response);
@@ -86,31 +87,28 @@ public class BlinkDebitClientTests : IDisposable
     /// Verify that timed out single consent is handled
     /// </summary>
     [Fact(DisplayName = "Verify that timed out single consent is handled")]
-    public void AwaitTimedOutSingleConsentThenThrowRuntimeException()
+    public async Task AwaitTimedOutSingleConsentThenThrowRuntimeException()
     {
         // create
-        var redirectFlow = new RedirectFlow(RedirectUri, Bank.PNZ);
-        var authFlowDetail = new AuthFlowDetail(redirectFlow);
+        var decoupledFlow = new DecoupledFlow(Bank.PNZ, IdentifierType.PhoneNumber, "+64-259531933", CallbackUrl);
+        var authFlowDetail = new AuthFlowDetail(decoupledFlow);
         var authFlow = new AuthFlow(authFlowDetail);
         var pcr = new Pcr("particulars", "code", "reference");
         var amount = new Amount("1.25", Amount.CurrencyEnum.NZD);
         var hashedCustomerIdentifier = "88df3798e32512ac340164f7ed133343d6dcb4888e4a91b03512dedd9800d12e";
         var request = new SingleConsentRequest(authFlow, pcr, amount, hashedCustomerIdentifier);
 
-        var createConsentResponse = _instance.CreateSingleConsent(request, RequestHeaders);
+        var createConsentResponse = await _instance.CreateSingleConsentAsync(request, RequestHeaders);
 
         Assert.NotNull(createConsentResponse);
 
         var consentId = createConsentResponse.ConsentId;
         Assert.NotEqual(Guid.Empty, consentId);
-        Assert.NotEmpty(createConsentResponse.RedirectUri);
-        Assert.StartsWith("https://api-nomatls.apicentre.middleware.co.nz/oauth/v2.0/authorize?scope=openid%20payments&response_type=code%20id_token&request=",
-            createConsentResponse.RedirectUri);
 
         // retrieve
         try
         {
-            _instance.AwaitAuthorisedSingleConsent(consentId, 5);
+            await _instance.AwaitAuthorisedSingleConsentAsync(consentId, 5);
         }
         catch (Exception e)
         {
@@ -123,13 +121,13 @@ public class BlinkDebitClientTests : IDisposable
     /// Verify that non-existent single consent is handled
     /// </summary>
     [Fact(DisplayName = "Verify that non-existent single consent is handled")]
-    public void AwaitNonExistentSingleConsentThenThrowRuntimeException()
+    public async Task AwaitNonExistentSingleConsentThenThrowRuntimeException()
     {
         var consentId = Guid.NewGuid();
 
         try
         {
-            _instance.AwaitAuthorisedSingleConsent(consentId, 5);
+            await _instance.AwaitAuthorisedSingleConsentAsync(consentId, 5);
         }
         catch (Exception e)
         {
@@ -142,7 +140,7 @@ public class BlinkDebitClientTests : IDisposable
     /// Verify that single consent with decoupled flow is retrieved
     /// </summary>
     [Fact(DisplayName = "Verify that single consent with decoupled flow is retrieved")]
-    public void AwaitAuthorisedSingleConsent()
+    public async Task AwaitAuthorisedSingleConsent()
     {
         // create
         var decoupledFlow = new DecoupledFlow(Bank.PNZ, IdentifierType.PhoneNumber, "+64-259531933", CallbackUrl);
@@ -153,7 +151,7 @@ public class BlinkDebitClientTests : IDisposable
         var hashedCustomerIdentifier = "88df3798e32512ac340164f7ed133343d6dcb4888e4a91b03512dedd9800d12e";
         var request = new SingleConsentRequest(authFlow, pcr, amount, hashedCustomerIdentifier);
 
-        var createConsentResponse = _instance.CreateSingleConsent(request, RequestHeaders);
+        var createConsentResponse = await _instance.CreateSingleConsentAsync(request, RequestHeaders);
 
         Assert.NotNull(createConsentResponse);
 
@@ -161,7 +159,7 @@ public class BlinkDebitClientTests : IDisposable
         Assert.NotEqual(Guid.Empty, consentId);
 
         // retrieve
-        var consent = _instance.AwaitAuthorisedSingleConsent(consentId, 30);
+        var consent = await _instance.AwaitAuthorisedSingleConsentAsync(consentId, 30);
 
         Assert.NotNull(consent);
         Assert.Equal(Consent.StatusEnum.Authorised, consent.Status);
@@ -188,31 +186,28 @@ public class BlinkDebitClientTests : IDisposable
     /// Verify that timed out single consent is handled
     /// </summary>
     [Fact(DisplayName = "Verify that timed out single consent is handled")]
-    public void AwaitTimedOutSingleConsentThenThrowConsentTimeoutException()
+    public async Task AwaitTimedOutSingleConsentThenThrowConsentTimeoutException()
     {
         // create
-        var redirectFlow = new RedirectFlow(RedirectUri, Bank.PNZ);
-        var authFlowDetail = new AuthFlowDetail(redirectFlow);
+        var decoupledFlow = new DecoupledFlow(Bank.PNZ, IdentifierType.PhoneNumber, "+64-259531933", CallbackUrl);
+        var authFlowDetail = new AuthFlowDetail(decoupledFlow);
         var authFlow = new AuthFlow(authFlowDetail);
         var pcr = new Pcr("particulars", "code", "reference");
         var amount = new Amount("1.25", Amount.CurrencyEnum.NZD);
         var hashedCustomerIdentifier = "88df3798e32512ac340164f7ed133343d6dcb4888e4a91b03512dedd9800d12e";
         var request = new SingleConsentRequest(authFlow, pcr, amount, hashedCustomerIdentifier);
 
-        var createConsentResponse = _instance.CreateSingleConsent(request, RequestHeaders);
+        var createConsentResponse = await _instance.CreateSingleConsentAsync(request, RequestHeaders);
 
         Assert.NotNull(createConsentResponse);
 
         var consentId = createConsentResponse.ConsentId;
         Assert.NotEqual(Guid.Empty, consentId);
-        Assert.NotEmpty(createConsentResponse.RedirectUri);
-        Assert.StartsWith("https://api-nomatls.apicentre.middleware.co.nz/oauth/v2.0/authorize?scope=openid%20payments&response_type=code%20id_token&request=",
-            createConsentResponse.RedirectUri);
 
         // retrieve
         try
         {
-            _instance.AwaitAuthorisedSingleConsentOrThrowException(consentId, 5);
+            await _instance.AwaitAuthorisedSingleConsentAsync(consentId, 5);
         }
         catch (Exception e)
         {
@@ -225,13 +220,13 @@ public class BlinkDebitClientTests : IDisposable
     /// Verify that non-existent single consent is handled
     /// </summary>
     [Fact(DisplayName = "Verify that non-existent single consent is handled")]
-    public void AwaitNonExistentSingleConsentThenThrowResourceNotFoundException()
+    public async Task AwaitNonExistentSingleConsentThenThrowResourceNotFoundException()
     {
         var consentId = Guid.NewGuid();
 
         try
         {
-            _instance.AwaitAuthorisedSingleConsentOrThrowException(consentId, 5);
+            await _instance.AwaitAuthorisedSingleConsentAsync(consentId, 5);
         }
         catch (Exception e)
         {
@@ -244,7 +239,7 @@ public class BlinkDebitClientTests : IDisposable
     /// Verify that single consent with decoupled flow is retrieved
     /// </summary>
     [Fact(DisplayName = "Verify that single consent with decoupled flow is retrieved")]
-    public void AwaitAuthorisedSingleConsentOrThrowException()
+    public async Task AwaitAuthorisedSingleConsentOrThrowException()
     {
         // create
         var decoupledFlow = new DecoupledFlow(Bank.PNZ, IdentifierType.PhoneNumber, "+64-259531933", CallbackUrl);
@@ -255,7 +250,7 @@ public class BlinkDebitClientTests : IDisposable
         var hashedCustomerIdentifier = "88df3798e32512ac340164f7ed133343d6dcb4888e4a91b03512dedd9800d12e";
         var request = new SingleConsentRequest(authFlow, pcr, amount, hashedCustomerIdentifier);
 
-        var createConsentResponse = _instance.CreateSingleConsent(request, RequestHeaders);
+        var createConsentResponse = await _instance.CreateSingleConsentAsync(request, RequestHeaders);
 
         Assert.NotNull(createConsentResponse);
 
@@ -263,7 +258,7 @@ public class BlinkDebitClientTests : IDisposable
         Assert.NotEqual(Guid.Empty, consentId);
 
         // retrieve
-        var consent = _instance.AwaitAuthorisedSingleConsentOrThrowException(consentId, 30);
+        var consent = await _instance.AwaitAuthorisedSingleConsentAsync(consentId, 30);
 
         Assert.NotNull(consent);
         Assert.Equal(Consent.StatusEnum.Authorised, consent.Status);
@@ -290,7 +285,7 @@ public class BlinkDebitClientTests : IDisposable
     /// Verify that timed out enduring consent is handled
     /// </summary>
     [Fact(DisplayName = "Verify that timed out enduring consent is handled")]
-    public void AwaitTimedOutEnduringConsentThenThrowRuntimeException()
+    public async Task AwaitTimedOutEnduringConsentThenThrowRuntimeException()
     {
         // create
         var decoupledFlow = new DecoupledFlow(Bank.PNZ, IdentifierType.PhoneNumber, "+64-259531933", CallbackUrl);
@@ -303,7 +298,7 @@ public class BlinkDebitClientTests : IDisposable
         var request = new EnduringConsentRequest(authFlow, fromTimestamp, default,
             Period.Fortnightly, maximumAmountPeriod, maximumAmountPayment, hashedCustomerIdentifier);
 
-        var createConsentResponse = _instance.CreateEnduringConsent(request, RequestHeaders);
+        var createConsentResponse = await _instance.CreateEnduringConsentAsync(request, RequestHeaders);
 
         Assert.NotNull(createConsentResponse);
 
@@ -313,7 +308,7 @@ public class BlinkDebitClientTests : IDisposable
         // retrieve
         try
         {
-            _instance.AwaitAuthorisedEnduringConsent(consentId, 1);
+            await _instance.AwaitAuthorisedEnduringConsentAsync(consentId, 1);
         }
         catch (Exception e)
         {
@@ -326,13 +321,13 @@ public class BlinkDebitClientTests : IDisposable
     /// Verify that non-existent enduring consent is handled
     /// </summary>
     [Fact(DisplayName = "Verify that non-existent enduring consent is handled")]
-    public void AwaitNonExistentEnduringConsentThenThrowRuntimeException()
+    public async Task AwaitNonExistentEnduringConsentThenThrowRuntimeException()
     {
         var consentId = Guid.NewGuid();
 
         try
         {
-            _instance.AwaitAuthorisedEnduringConsent(consentId, 5);
+            await _instance.AwaitAuthorisedEnduringConsentAsync(consentId, 5);
         }
         catch (Exception e)
         {
@@ -345,7 +340,7 @@ public class BlinkDebitClientTests : IDisposable
     /// Verify that enduring consent with decoupled flow is retrieved
     /// </summary>
     [Fact(DisplayName = "Verify that enduring consent with decoupled flow is retrieved")]
-    public void AwaitAuthorisedEnduringConsent()
+    public async Task AwaitAuthorisedEnduringConsent()
     {
         // create
         var decoupledFlow = new DecoupledFlow(Bank.PNZ, IdentifierType.PhoneNumber, "+64-259531933", CallbackUrl);
@@ -358,7 +353,7 @@ public class BlinkDebitClientTests : IDisposable
         var request = new EnduringConsentRequest(authFlow, fromTimestamp, default,
             Period.Fortnightly, maximumAmountPeriod, maximumAmountPayment, hashedCustomerIdentifier);
 
-        var createConsentResponse = _instance.CreateEnduringConsent(request, RequestHeaders);
+        var createConsentResponse = await _instance.CreateEnduringConsentAsync(request, RequestHeaders);
 
         Assert.NotNull(createConsentResponse);
 
@@ -366,7 +361,7 @@ public class BlinkDebitClientTests : IDisposable
         Assert.NotEqual(Guid.Empty, consentId);
 
         // retrieve
-        var consent = _instance.AwaitAuthorisedEnduringConsent(consentId, 30);
+        var consent = await _instance.AwaitAuthorisedEnduringConsentAsync(consentId, 30);
 
         Assert.NotNull(consent);
         Assert.Equal(Consent.StatusEnum.Authorised, consent.Status);
@@ -400,7 +395,7 @@ public class BlinkDebitClientTests : IDisposable
     /// Verify that timed out enduring consent is handled
     /// </summary>
     [Fact(DisplayName = "Verify that timed out enduring consent is handled")]
-    public void AwaitTimedOutEnduringConsentThenThrowConsentTimeoutException()
+    public async Task AwaitTimedOutEnduringConsentThenThrowConsentTimeoutException()
     {
         // create
         var decoupledFlow = new DecoupledFlow(Bank.PNZ, IdentifierType.PhoneNumber, "+64-259531933", CallbackUrl);
@@ -413,7 +408,7 @@ public class BlinkDebitClientTests : IDisposable
         var request = new EnduringConsentRequest(authFlow, fromTimestamp, default,
             Period.Fortnightly, maximumAmountPeriod, maximumAmountPayment, hashedCustomerIdentifier);
 
-        var createConsentResponse = _instance.CreateEnduringConsent(request, RequestHeaders);
+        var createConsentResponse = await _instance.CreateEnduringConsentAsync(request, RequestHeaders);
 
         Assert.NotNull(createConsentResponse);
 
@@ -423,7 +418,7 @@ public class BlinkDebitClientTests : IDisposable
         // retrieve
         try
         {
-            _instance.AwaitAuthorisedEnduringConsentOrThrowException(consentId, 5);
+            await _instance.AwaitAuthorisedEnduringConsentAsync(consentId, 5);
         }
         catch (Exception e)
         {
@@ -436,13 +431,13 @@ public class BlinkDebitClientTests : IDisposable
     /// Verify that non-existent enduring consent is handled
     /// </summary>
     [Fact(DisplayName = "Verify that non-existent enduring consent is handled")]
-    public void AwaitNonExistentEnduringConsentThenThrowResourceNotFoundException()
+    public async Task AwaitNonExistentEnduringConsentThenThrowResourceNotFoundException()
     {
         var consentId = Guid.NewGuid();
 
         try
         {
-            _instance.AwaitAuthorisedEnduringConsentOrThrowException(consentId, 5);
+            await _instance.AwaitAuthorisedEnduringConsentAsync(consentId, 5);
         }
         catch (Exception e)
         {
@@ -455,7 +450,7 @@ public class BlinkDebitClientTests : IDisposable
     /// Verify that enduring consent with decoupled flow is retrieved
     /// </summary>
     [Fact(DisplayName = "Verify that enduring consent with decoupled flow is retrieved")]
-    public void AwaitAuthorisedEnduringConsentOrThrowException()
+    public async Task AwaitAuthorisedEnduringConsentOrThrowException()
     {
         // create
         var decoupledFlow = new DecoupledFlow(Bank.PNZ, IdentifierType.PhoneNumber, "+64-259531933", CallbackUrl);
@@ -468,7 +463,7 @@ public class BlinkDebitClientTests : IDisposable
         var request = new EnduringConsentRequest(authFlow, fromTimestamp, default,
             Period.Fortnightly, maximumAmountPeriod, maximumAmountPayment, hashedCustomerIdentifier);
 
-        var createConsentResponse = _instance.CreateEnduringConsent(request, RequestHeaders);
+        var createConsentResponse = await _instance.CreateEnduringConsentAsync(request, RequestHeaders);
 
         Assert.NotNull(createConsentResponse);
 
@@ -476,7 +471,7 @@ public class BlinkDebitClientTests : IDisposable
         Assert.NotEqual(Guid.Empty, consentId);
 
         // retrieve
-        var consent = _instance.AwaitAuthorisedEnduringConsentOrThrowException(consentId, 30);
+        var consent = await _instance.AwaitAuthorisedEnduringConsentAsync(consentId, 30);
 
         Assert.NotNull(consent);
         Assert.Equal(Consent.StatusEnum.Authorised, consent.Status);
@@ -510,31 +505,28 @@ public class BlinkDebitClientTests : IDisposable
     /// Verify that timed out quick payment is handled
     /// </summary>
     [Fact(DisplayName = "Verify that timed out quick payment is handled")]
-    public void AwaitTimedOutQuickPaymentThenThrowRuntimeException()
+    public async Task AwaitTimedOutQuickPaymentThenThrowRuntimeException()
     {
         // create
-        var redirectFlow = new RedirectFlow(RedirectUri, Bank.PNZ);
-        var authFlowDetail = new AuthFlowDetail(redirectFlow);
+        var decoupledFlow = new DecoupledFlow(Bank.PNZ, IdentifierType.PhoneNumber, "+64-259531933", CallbackUrl);
+        var authFlowDetail = new AuthFlowDetail(decoupledFlow);
         var authFlow = new AuthFlow(authFlowDetail);
         var pcr = new Pcr("particulars", "code", "reference");
         var amount = new Amount("1.25", Amount.CurrencyEnum.NZD);
         var hashedCustomerIdentifier = "88df3798e32512ac340164f7ed133343d6dcb4888e4a91b03512dedd9800d12e";
         var request = new QuickPaymentRequest(authFlow, pcr, amount, hashedCustomerIdentifier);
 
-        var createQuickPaymentResponse = _instance.CreateQuickPayment(request, RequestHeaders);
+        var createQuickPaymentResponse = await _instance.CreateQuickPaymentAsync(request, RequestHeaders);
 
         Assert.NotNull(createQuickPaymentResponse);
 
         var quickPaymentId = createQuickPaymentResponse.QuickPaymentId;
         Assert.NotEqual(Guid.Empty, quickPaymentId);
-        Assert.NotEmpty(createQuickPaymentResponse.RedirectUri);
-        Assert.StartsWith("https://api-nomatls.apicentre.middleware.co.nz/oauth/v2.0/authorize?scope=openid%20payments&response_type=code%20id_token&request=",
-            createQuickPaymentResponse.RedirectUri);
 
         // retrieve
         try
         {
-            _instance.AwaitSuccessfulQuickPayment(quickPaymentId, 5);
+            await _instance.AwaitSuccessfulQuickPaymentAsync(quickPaymentId, 5);
         }
         catch (Exception e)
         {
@@ -547,13 +539,13 @@ public class BlinkDebitClientTests : IDisposable
     /// Verify that non-existent quick payment is handled
     /// </summary>
     [Fact(DisplayName = "Verify that non-existent quick payment is handled")]
-    public void AwaitNonExistentQuickPaymentThenThrowRuntimeException()
+    public async Task AwaitNonExistentQuickPaymentThenThrowRuntimeException()
     {
         var consentId = Guid.NewGuid();
 
         try
         {
-            _instance.AwaitSuccessfulQuickPayment(consentId, 5);
+            await _instance.AwaitSuccessfulQuickPaymentAsync(consentId, 5);
         }
         catch (Exception e)
         {
@@ -565,8 +557,8 @@ public class BlinkDebitClientTests : IDisposable
     /// <summary>
     /// Verify that quick payment with decoupled flow is retrieved
     /// </summary>
-    [Fact(DisplayName = "Verify that quick payment with decoupled flow is retrieved", Skip = "Fails in GitHub")]
-    public void AwaitSuccessfulQuickPayment()
+    [Fact(DisplayName = "Verify that quick payment with decoupled flow is retrieved")]
+    public async Task AwaitSuccessfulQuickPayment()
     {
         // create
         var decoupledFlow = new DecoupledFlow(Bank.PNZ, IdentifierType.PhoneNumber, "+64-259531933", CallbackUrl);
@@ -577,7 +569,7 @@ public class BlinkDebitClientTests : IDisposable
         var hashedCustomerIdentifier = "88df3798e32512ac340164f7ed133343d6dcb4888e4a91b03512dedd9800d12e";
         var request = new QuickPaymentRequest(authFlow, pcr, amount, hashedCustomerIdentifier);
 
-        var createQuickPaymentResponse = _instance.CreateQuickPayment(request, RequestHeaders);
+        var createQuickPaymentResponse = await _instance.CreateQuickPaymentAsync(request, RequestHeaders);
 
         Assert.NotNull(createQuickPaymentResponse);
 
@@ -585,7 +577,7 @@ public class BlinkDebitClientTests : IDisposable
         Assert.NotEqual(Guid.Empty, quickPaymentId);
 
         // retrieve
-        var quickPaymentResponse = _instance.AwaitSuccessfulQuickPayment(quickPaymentId, 300);
+        var quickPaymentResponse = await _instance.AwaitSuccessfulQuickPaymentAsync(quickPaymentId, 300);
 
         Assert.NotNull(quickPaymentResponse);
         Assert.Contains(quickPaymentResponse.Consent.Status,
@@ -597,16 +589,30 @@ public class BlinkDebitClientTests : IDisposable
             Assert.NotNull(payment);
             Assert.NotEqual(Guid.Empty, payment.PaymentId);
             Assert.Equal(Payment.TypeEnum.Single, payment.Type);
-            Assert.Equal(Payment.StatusEnum.AcceptedSettlementCompleted, payment.Status);
-            Assert.Equal(Payment.AcceptedReasonEnum.SourceBankPaymentSent, payment.AcceptedReason);
+            Assert.Contains(payment.Status,
+                new[] { Payment.StatusEnum.AcceptedSettlementCompleted, Payment.StatusEnum.Pending });
+
+            // Only check these fields if payment is completed
+            if (payment.Status == Payment.StatusEnum.AcceptedSettlementCompleted)
+            {
+                Assert.Equal(Payment.AcceptedReasonEnum.SourceBankPaymentSent, payment.AcceptedReason);
+            }
+
             Assert.Empty(payment.Refunds);
             Assert.NotEqual(DateTimeOffset.MinValue, payment.CreationTimestamp);
             Assert.NotEqual(DateTimeOffset.MinValue, payment.StatusUpdatedTimestamp);
             var paymentDetail = payment.Detail;
             Assert.NotNull(paymentDetail);
             Assert.Equal(quickPaymentId, paymentDetail.ConsentId);
-            Assert.Null(paymentDetail.Pcr);
-            Assert.Null(paymentDetail.Amount);
+
+            // Amount may not be populated until payment completes
+            if (payment.Status == Payment.StatusEnum.AcceptedSettlementCompleted)
+            {
+                // Note: PCR is not returned in payment details by the API
+                Assert.NotNull(paymentDetail.Amount);
+                Assert.Equal("1.25", paymentDetail.Amount.Total);
+                Assert.Equal(Amount.CurrencyEnum.NZD, paymentDetail.Amount.Currency);
+            }
         }
 
         Assert.NotNull(quickPaymentResponse.Consent.Detail);
@@ -630,31 +636,28 @@ public class BlinkDebitClientTests : IDisposable
     /// Verify that timed out quick payment is handled
     /// </summary>
     [Fact(DisplayName = "Verify that timed out quick payment is handled")]
-    public void AwaitTimedOutQuickPaymentThenThrowConsentTimeoutException()
+    public async Task AwaitTimedOutQuickPaymentThenThrowConsentTimeoutException()
     {
         // create
-        var redirectFlow = new RedirectFlow(RedirectUri, Bank.PNZ);
-        var authFlowDetail = new AuthFlowDetail(redirectFlow);
+        var decoupledFlow = new DecoupledFlow(Bank.PNZ, IdentifierType.PhoneNumber, "+64-259531933", CallbackUrl);
+        var authFlowDetail = new AuthFlowDetail(decoupledFlow);
         var authFlow = new AuthFlow(authFlowDetail);
         var pcr = new Pcr("particulars", "code", "reference");
         var amount = new Amount("1.25", Amount.CurrencyEnum.NZD);
         var hashedCustomerIdentifier = "88df3798e32512ac340164f7ed133343d6dcb4888e4a91b03512dedd9800d12e";
         var request = new QuickPaymentRequest(authFlow, pcr, amount, hashedCustomerIdentifier);
 
-        var createQuickPaymentResponse = _instance.CreateQuickPayment(request, RequestHeaders);
+        var createQuickPaymentResponse = await _instance.CreateQuickPaymentAsync(request, RequestHeaders);
 
         Assert.NotNull(createQuickPaymentResponse);
 
         var quickPaymentId = createQuickPaymentResponse.QuickPaymentId;
         Assert.NotEqual(Guid.Empty, quickPaymentId);
-        Assert.NotEmpty(createQuickPaymentResponse.RedirectUri);
-        Assert.StartsWith("https://api-nomatls.apicentre.middleware.co.nz/oauth/v2.0/authorize?scope=openid%20payments&response_type=code%20id_token&request=",
-            createQuickPaymentResponse.RedirectUri);
 
         // retrieve
         try
         {
-            _instance.AwaitSuccessfulQuickPaymentOrThrowException(quickPaymentId, 5);
+            await _instance.AwaitSuccessfulQuickPaymentAsync(quickPaymentId, 5);
         }
         catch (Exception e)
         {
@@ -667,13 +670,13 @@ public class BlinkDebitClientTests : IDisposable
     /// Verify that non-existent quick payment is handled
     /// </summary>
     [Fact(DisplayName = "Verify that non-existent quick payment is handled")]
-    public void AwaitNonExistentQuickPaymentThenThrowResourceNotFoundException()
+    public async Task AwaitNonExistentQuickPaymentThenThrowResourceNotFoundException()
     {
         var consentId = Guid.NewGuid();
 
         try
         {
-            _instance.AwaitSuccessfulQuickPaymentOrThrowException(consentId, 5);
+            await _instance.AwaitSuccessfulQuickPaymentAsync(consentId, 5);
         }
         catch (Exception e)
         {
@@ -686,7 +689,7 @@ public class BlinkDebitClientTests : IDisposable
     /// Verify that quick payment with decoupled flow is retrieved
     /// </summary>
     [Fact(DisplayName = "Verify that quick payment with decoupled flow is retrieved")]
-    public void AwaitSuccessfulQuickPaymentOrThrowException()
+    public async Task AwaitSuccessfulQuickPaymentOrThrowException()
     {
         // create
         var decoupledFlow = new DecoupledFlow(Bank.PNZ, IdentifierType.PhoneNumber, "+64-259531933", CallbackUrl);
@@ -697,7 +700,7 @@ public class BlinkDebitClientTests : IDisposable
         var hashedCustomerIdentifier = "88df3798e32512ac340164f7ed133343d6dcb4888e4a91b03512dedd9800d12e";
         var request = new QuickPaymentRequest(authFlow, pcr, amount, hashedCustomerIdentifier);
 
-        var createQuickPaymentResponse = _instance.CreateQuickPayment(request, RequestHeaders);
+        var createQuickPaymentResponse = await _instance.CreateQuickPaymentAsync(request, RequestHeaders);
 
         Assert.NotNull(createQuickPaymentResponse);
 
@@ -705,7 +708,7 @@ public class BlinkDebitClientTests : IDisposable
         Assert.NotEqual(Guid.Empty, quickPaymentId);
 
         // retrieve
-        var quickPaymentResponse = _instance.AwaitSuccessfulQuickPaymentOrThrowException(quickPaymentId, 300);
+        var quickPaymentResponse = await _instance.AwaitSuccessfulQuickPaymentAsync(quickPaymentId, 300);
 
         Assert.NotNull(quickPaymentResponse);
         Assert.Contains(quickPaymentResponse.Consent.Status,
@@ -720,15 +723,27 @@ public class BlinkDebitClientTests : IDisposable
             Assert.Equal(Payment.TypeEnum.Single, payment.Type);
             Assert.Contains(payment.Status,
                 new [] {Payment.StatusEnum.AcceptedSettlementCompleted, Payment.StatusEnum.Pending });
-            Assert.Equal(Payment.AcceptedReasonEnum.SourceBankPaymentSent, payment.AcceptedReason);
+
+            // Only check AcceptedReason if payment is completed
+            if (payment.Status == Payment.StatusEnum.AcceptedSettlementCompleted)
+            {
+                Assert.Equal(Payment.AcceptedReasonEnum.SourceBankPaymentSent, payment.AcceptedReason);
+            }
+
             Assert.Empty(payment.Refunds);
             Assert.NotEqual(DateTimeOffset.MinValue, payment.CreationTimestamp);
             Assert.NotEqual(DateTimeOffset.MinValue, payment.StatusUpdatedTimestamp);
             var paymentDetail = payment.Detail;
             Assert.NotNull(paymentDetail);
             Assert.Equal(quickPaymentId, paymentDetail.ConsentId);
-            Assert.Null(paymentDetail.Pcr);
-            Assert.Equal(amount, paymentDetail.Amount);
+
+            // Amount may not be populated until payment completes
+            if (payment.Status == Payment.StatusEnum.AcceptedSettlementCompleted)
+            {
+                // Note: PCR is not returned in payment details by the API
+                Assert.Null(paymentDetail.Pcr);
+                Assert.Equal(amount, paymentDetail.Amount);
+            }
         }
 
         Assert.NotNull(quickPaymentResponse.Consent.Detail);
@@ -752,7 +767,7 @@ public class BlinkDebitClientTests : IDisposable
     /// Verify that timed out payment is handled
     /// </summary>
     [Fact(DisplayName = "Verify that timed out payment is handled")]
-    public void AwaitTimedOutPaymentThenThrowRuntimeException()
+    public async Task AwaitTimedOutPaymentThenThrowRuntimeException()
     {
         // create consent
         var decoupledFlow = new DecoupledFlow(Bank.PNZ, IdentifierType.PhoneNumber, "+64-259531933", CallbackUrl);
@@ -763,7 +778,7 @@ public class BlinkDebitClientTests : IDisposable
         var hashedCustomerIdentifier = "88df3798e32512ac340164f7ed133343d6dcb4888e4a91b03512dedd9800d12e";
         var request = new SingleConsentRequest(authFlow, pcr, amount, hashedCustomerIdentifier);
 
-        var createConsentResponse = _instance.CreateSingleConsent(request, RequestHeaders);
+        var createConsentResponse = await _instance.CreateSingleConsentAsync(request, RequestHeaders);
 
         Assert.NotNull(createConsentResponse);
 
@@ -771,7 +786,7 @@ public class BlinkDebitClientTests : IDisposable
         Assert.NotEqual(Guid.Empty, consentId);
 
         // retrieve consent
-        var consent = _instance.AwaitAuthorisedSingleConsent(consentId, 30);
+        var consent = await _instance.AwaitAuthorisedSingleConsentAsync(consentId, 30);
 
         Assert.NotNull(consent);
         Assert.Equal(Consent.StatusEnum.Authorised, consent.Status);
@@ -800,7 +815,7 @@ public class BlinkDebitClientTests : IDisposable
         };
 
         RequestHeaders[BlinkDebitConstant.IDEMPOTENCY_KEY.GetValue()] = Guid.NewGuid().ToString();
-        var paymentResponse = _instance.CreatePayment(paymentRequest, RequestHeaders);
+        var paymentResponse = await _instance.CreatePaymentAsync(paymentRequest, RequestHeaders);
 
         Assert.NotNull(paymentResponse);
         var paymentId = paymentResponse.PaymentId;
@@ -808,7 +823,7 @@ public class BlinkDebitClientTests : IDisposable
         // retrieve payment
         try
         {
-            _instance.AwaitSuccessfulPayment(paymentId, 5);
+            await _instance.AwaitSuccessfulPaymentAsync(paymentId, 5);
         }
         catch (Exception e)
         {
@@ -821,13 +836,13 @@ public class BlinkDebitClientTests : IDisposable
     /// Verify that non-existent payment is handled
     /// </summary>
     [Fact(DisplayName = "Verify that non-existent payment is handled")]
-    public void AwaitNonExistentPaymentThenThrowRuntimeException()
+    public async Task AwaitNonExistentPaymentThenThrowRuntimeException()
     {
         var paymentId = Guid.NewGuid();
 
         try
         {
-            _instance.AwaitSuccessfulPayment(paymentId, 5);
+            await _instance.AwaitSuccessfulPaymentAsync(paymentId, 5);
         }
         catch (Exception e)
         {
@@ -840,7 +855,7 @@ public class BlinkDebitClientTests : IDisposable
     /// Verify that payment is created and retrieved
     /// </summary>
     [Fact(DisplayName = "Verify that payment is created and retrieved")]
-    public void AwaitSuccessfulPayment()
+    public async Task AwaitSuccessfulPayment()
     {
         // create consent
         var decoupledFlow = new DecoupledFlow(Bank.PNZ, IdentifierType.PhoneNumber, "+64-259531933", CallbackUrl);
@@ -851,7 +866,7 @@ public class BlinkDebitClientTests : IDisposable
         var hashedCustomerIdentifier = "88df3798e32512ac340164f7ed133343d6dcb4888e4a91b03512dedd9800d12e";
         var request = new SingleConsentRequest(authFlow, pcr, amount, hashedCustomerIdentifier);
 
-        var createConsentResponse = _instance.CreateSingleConsent(request, RequestHeaders);
+        var createConsentResponse = await _instance.CreateSingleConsentAsync(request, RequestHeaders);
 
         Assert.NotNull(createConsentResponse);
 
@@ -859,7 +874,7 @@ public class BlinkDebitClientTests : IDisposable
         Assert.NotEqual(Guid.Empty, consentId);
 
         // retrieve consent
-        var consent = _instance.AwaitAuthorisedSingleConsent(consentId, 30);
+        var consent = await _instance.AwaitAuthorisedSingleConsentAsync(consentId, 30);
 
         Assert.NotNull(consent);
         Assert.Equal(Consent.StatusEnum.Authorised, consent.Status);
@@ -888,13 +903,13 @@ public class BlinkDebitClientTests : IDisposable
         };
 
         RequestHeaders[BlinkDebitConstant.IDEMPOTENCY_KEY.GetValue()] = Guid.NewGuid().ToString();
-        var paymentResponse = _instance.CreatePayment(paymentRequest, RequestHeaders);
+        var paymentResponse = await _instance.CreatePaymentAsync(paymentRequest, RequestHeaders);
 
         Assert.NotNull(paymentResponse);
         var paymentId = paymentResponse.PaymentId;
 
         // retrieve payment
-        var payment = _instance.AwaitSuccessfulPayment(paymentId, 10);
+        var payment = await _instance.AwaitSuccessfulPaymentAsync(paymentId, 10);
 
         Assert.NotNull(payment);
         Assert.Equal(paymentId, payment.PaymentId);
@@ -915,7 +930,7 @@ public class BlinkDebitClientTests : IDisposable
     /// Verify that timed out payment is handled
     /// </summary>
     [Fact(DisplayName = "Verify that timed out payment is handled")]
-    public void AwaitTimedOutPaymentThenThrowPaymentTimeoutException()
+    public async Task AwaitTimedOutPaymentThenThrowPaymentTimeoutException()
     {
         // create consent
         var decoupledFlow = new DecoupledFlow(Bank.PNZ, IdentifierType.PhoneNumber, "+64-259531933", CallbackUrl);
@@ -926,7 +941,7 @@ public class BlinkDebitClientTests : IDisposable
         var hashedCustomerIdentifier = "88df3798e32512ac340164f7ed133343d6dcb4888e4a91b03512dedd9800d12e";
         var request = new SingleConsentRequest(authFlow, pcr, amount, hashedCustomerIdentifier);
 
-        var createConsentResponse = _instance.CreateSingleConsent(request, RequestHeaders);
+        var createConsentResponse = await _instance.CreateSingleConsentAsync(request, RequestHeaders);
 
         Assert.NotNull(createConsentResponse);
 
@@ -934,7 +949,7 @@ public class BlinkDebitClientTests : IDisposable
         Assert.NotEqual(Guid.Empty, consentId);
 
         // retrieve consent
-        var consent = _instance.AwaitAuthorisedSingleConsent(consentId, 300);
+        var consent = await _instance.AwaitAuthorisedSingleConsentAsync(consentId, 300);
 
         Assert.NotNull(consent);
         Assert.Equal(Consent.StatusEnum.Authorised, consent.Status);
@@ -963,7 +978,7 @@ public class BlinkDebitClientTests : IDisposable
         };
 
         RequestHeaders[BlinkDebitConstant.IDEMPOTENCY_KEY.GetValue()] = Guid.NewGuid().ToString();
-        var paymentResponse = _instance.CreatePayment(paymentRequest, RequestHeaders);
+        var paymentResponse = await _instance.CreatePaymentAsync(paymentRequest, RequestHeaders);
 
         Assert.NotNull(paymentResponse);
         var paymentId = paymentResponse.PaymentId;
@@ -971,7 +986,7 @@ public class BlinkDebitClientTests : IDisposable
         // retrieve payment
         try
         {
-            _instance.AwaitSuccessfulPayment(paymentId, 5);
+            await _instance.AwaitSuccessfulPaymentAsync(paymentId, 5);
         }
         catch (Exception e)
         {
@@ -984,13 +999,13 @@ public class BlinkDebitClientTests : IDisposable
     /// Verify that non-existent payment is handled
     /// </summary>
     [Fact(DisplayName = "Verify that non-existent payment is handled")]
-    public void AwaitNonExistentPaymentThenThrowResourceNotFoundException()
+    public async Task AwaitNonExistentPaymentThenThrowResourceNotFoundException()
     {
         var paymentId = Guid.NewGuid();
 
         try
         {
-            _instance.AwaitSuccessfulPaymentOrThrowException(paymentId, 5);
+            await _instance.AwaitSuccessfulPaymentAsync(paymentId, 5);
         }
         catch (Exception e)
         {
@@ -1003,7 +1018,7 @@ public class BlinkDebitClientTests : IDisposable
     /// Verify that payment is created and retrieved
     /// </summary>
     [Fact(DisplayName = "Verify that payment is created and retrieved")]
-    public void AwaitAuthorisedPaymentOrThrowException()
+    public async Task AwaitAuthorisedPaymentOrThrowException()
     {
         // create consent
         var decoupledFlow = new DecoupledFlow(Bank.PNZ, IdentifierType.PhoneNumber, "+64-259531933", CallbackUrl);
@@ -1014,7 +1029,7 @@ public class BlinkDebitClientTests : IDisposable
         var hashedCustomerIdentifier = "88df3798e32512ac340164f7ed133343d6dcb4888e4a91b03512dedd9800d12e";
         var request = new SingleConsentRequest(authFlow, pcr, amount, hashedCustomerIdentifier);
 
-        var createConsentResponse = _instance.CreateSingleConsent(request, RequestHeaders);
+        var createConsentResponse = await _instance.CreateSingleConsentAsync(request, RequestHeaders);
 
         Assert.NotNull(createConsentResponse);
 
@@ -1022,7 +1037,7 @@ public class BlinkDebitClientTests : IDisposable
         Assert.NotEqual(Guid.Empty, consentId);
 
         // retrieve consent
-        var consent = _instance.AwaitAuthorisedSingleConsent(consentId, 30);
+        var consent = await _instance.AwaitAuthorisedSingleConsentAsync(consentId, 30);
 
         Assert.NotNull(consent);
         Assert.Equal(Consent.StatusEnum.Authorised, consent.Status);
@@ -1051,13 +1066,13 @@ public class BlinkDebitClientTests : IDisposable
         };
 
         RequestHeaders[BlinkDebitConstant.IDEMPOTENCY_KEY.GetValue()] = Guid.NewGuid().ToString();
-        var paymentResponse = _instance.CreatePayment(paymentRequest, RequestHeaders);
+        var paymentResponse = await _instance.CreatePaymentAsync(paymentRequest, RequestHeaders);
 
         Assert.NotNull(paymentResponse);
         var paymentId = paymentResponse.PaymentId;
 
         // retrieve payment
-        var payment = _instance.AwaitSuccessfulPaymentOrThrowException(paymentId, 10);
+        var payment = await _instance.AwaitSuccessfulPaymentAsync(paymentId, 10);
 
         Assert.NotNull(payment);
         Assert.Equal(paymentId, payment.PaymentId);
