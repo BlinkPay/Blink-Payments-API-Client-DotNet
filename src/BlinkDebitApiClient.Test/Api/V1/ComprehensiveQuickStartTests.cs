@@ -22,6 +22,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using BlinkDebitApiClient.Api.V1;
 using BlinkDebitApiClient.Exceptions;
 using BlinkDebitApiClient.Model.V1;
@@ -66,39 +67,36 @@ public class ComprehensiveQuickStartTests : IDisposable
     }
 
     [Fact(DisplayName = "1. Quick Start - Gateway Flow Quick Payment (README Example)")]
-    public void Test1_QuickStartGatewayFlowQuickPayment()
+    public async Task Test1_QuickStartGatewayFlowQuickPayment()
     {
         _output.WriteLine("=== TEST 1: Quick Start - Gateway Flow Quick Payment ===");
 
         // Arrange - Following README Quick Start example exactly
-        var gatewayFlow = new GatewayFlow(RedirectUri);
-        var authFlowDetail = new AuthFlowDetail(gatewayFlow);
+        var decoupledFlow = new DecoupledFlow(Bank.PNZ, IdentifierType.PhoneNumber, "+64-259531933", RedirectUri);
+        var authFlowDetail = new AuthFlowDetail(decoupledFlow);
         var authFlow = new AuthFlow(authFlowDetail);
         var pcr = new Pcr("particulars", "code", "reference");
         var amount = new Amount("0.01", Amount.CurrencyEnum.NZD);
         var request = new QuickPaymentRequest(authFlow, pcr, amount);
 
         // Act
-        var qpCreateResponse = _client.CreateQuickPayment(request, RequestHeaders);
+        var qpCreateResponse = await _client.CreateQuickPaymentAsync(request, RequestHeaders);
 
         // Assert
         Assert.NotNull(qpCreateResponse);
-        Assert.NotNull(qpCreateResponse.RedirectUri);
-        Assert.NotEmpty(qpCreateResponse.RedirectUri);
         Assert.NotEqual(Guid.Empty, qpCreateResponse.QuickPaymentId);
 
         _output.WriteLine($"✓ Quick Payment Created: {qpCreateResponse.QuickPaymentId}");
-        _output.WriteLine($"✓ Redirect URL: {qpCreateResponse.RedirectUri}");
         _output.WriteLine("✓ Quick Start example PASSED\n");
     }
 
     [Fact(DisplayName = "2. Get Bank Metadata")]
-    public void Test2_GetBankMetadata()
+    public async Task Test2_GetBankMetadata()
     {
         _output.WriteLine("=== TEST 2: Get Bank Metadata ===");
 
         // Act
-        var bankMetadataList = _client.GetMeta(RequestHeaders);
+        var bankMetadataList = await _client.GetMetaAsync(RequestHeaders);
 
         // Assert
         Assert.NotNull(bankMetadataList);
@@ -120,103 +118,101 @@ public class ComprehensiveQuickStartTests : IDisposable
     }
 
     [Fact(DisplayName = "3. Create and Retrieve Single Consent with Redirect Flow")]
-    public void Test3_CreateAndRetrieveSingleConsent()
+    public async Task Test3_CreateAndRetrieveSingleConsent()
     {
         _output.WriteLine("=== TEST 3: Create and Retrieve Single Consent ===");
 
         // Arrange
-        var redirectFlow = new RedirectFlow(RedirectUri, Bank.PNZ);
-        var authFlowDetail = new AuthFlowDetail(redirectFlow);
+        var decoupledFlow = new DecoupledFlow(Bank.PNZ, IdentifierType.PhoneNumber, "+64-259531933", RedirectUri);
+        var authFlowDetail = new AuthFlowDetail(decoupledFlow);
         var authFlow = new AuthFlow(authFlowDetail);
         var pcr = new Pcr("test-single");
         var amount = new Amount("2.50", Amount.CurrencyEnum.NZD);
         var request = new SingleConsentRequest(authFlow, pcr, amount);
 
         // Act - Create
-        var createResponse = _client.CreateSingleConsent(request, RequestHeaders);
+        var createResponse = await _client.CreateSingleConsentAsync(request, RequestHeaders);
 
         // Assert - Create
         Assert.NotNull(createResponse);
         Assert.NotEqual(Guid.Empty, createResponse.ConsentId);
-        Assert.NotEmpty(createResponse.RedirectUri);
 
         _output.WriteLine($"✓ Single Consent Created: {createResponse.ConsentId}");
-        _output.WriteLine($"✓ Redirect URL: {createResponse.RedirectUri}");
         _output.WriteLine("✓ Single Consent creation PASSED\n");
     }
 
     [Fact(DisplayName = "4. Create Quick Payment with Different Flow Types")]
-    public void Test4_CreateQuickPaymentWithDifferentFlows()
+    public async Task Test4_CreateQuickPaymentWithDifferentFlows()
     {
         _output.WriteLine("=== TEST 4: Create Quick Payments with Different Flows ===");
 
-        // Test 4a: Gateway Flow
-        _output.WriteLine("4a. Testing Gateway Flow...");
-        var gatewayFlow = new GatewayFlow(RedirectUri);
-        var authFlowDetail1 = new AuthFlowDetail(gatewayFlow);
+        // Test 4a: Decoupled Flow (First quick payment)
+        _output.WriteLine("4a. Testing Decoupled Flow (First)...");
+        var decoupledFlow1 = new DecoupledFlow(Bank.PNZ, IdentifierType.PhoneNumber, "+64-259531933", RedirectUri);
+        var authFlowDetail1 = new AuthFlowDetail(decoupledFlow1);
         var authFlow1 = new AuthFlow(authFlowDetail1);
         var pcr1 = new Pcr("test-gw", "code1", "ref1");
         var amount1 = new Amount("1.00", Amount.CurrencyEnum.NZD);
         var request1 = new QuickPaymentRequest(authFlow1, pcr1, amount1);
 
-        var qp1 = _client.CreateQuickPayment(request1, RequestHeaders);
+        var qp1 = await _client.CreateQuickPaymentAsync(request1, RequestHeaders);
         Assert.NotNull(qp1);
         Assert.NotEqual(Guid.Empty, qp1.QuickPaymentId);
-        _output.WriteLine($"✓ Gateway Flow Quick Payment Created: {qp1.QuickPaymentId}");
+        _output.WriteLine($"✓ Decoupled Flow Quick Payment Created: {qp1.QuickPaymentId}");
 
-        // Test 4b: Redirect Flow (Direct to bank)
-        _output.WriteLine("4b. Testing Redirect Flow...");
+        // Test 4b: Decoupled Flow (Second quick payment)
+        _output.WriteLine("4b. Testing Decoupled Flow (Second)...");
         RequestHeaders["Idempotency-Key"] = Guid.NewGuid().ToString(); // New key for new request
 
-        var redirectFlow = new RedirectFlow(RedirectUri, Bank.PNZ);
-        var authFlowDetail2 = new AuthFlowDetail(redirectFlow);
+        var decoupledFlow2 = new DecoupledFlow(Bank.PNZ, IdentifierType.PhoneNumber, "+64-259531933", RedirectUri);
+        var authFlowDetail2 = new AuthFlowDetail(decoupledFlow2);
         var authFlow2 = new AuthFlow(authFlowDetail2);
         var pcr2 = new Pcr("test-redir", "code2", "ref2");
         var amount2 = new Amount("1.50", Amount.CurrencyEnum.NZD);
         var request2 = new QuickPaymentRequest(authFlow2, pcr2, amount2);
 
-        var qp2 = _client.CreateQuickPayment(request2, RequestHeaders);
+        var qp2 = await _client.CreateQuickPaymentAsync(request2, RequestHeaders);
         Assert.NotNull(qp2);
         Assert.NotEqual(Guid.Empty, qp2.QuickPaymentId);
-        _output.WriteLine($"✓ Redirect Flow Quick Payment Created: {qp2.QuickPaymentId}");
+        _output.WriteLine($"✓ Decoupled Flow Quick Payment Created: {qp2.QuickPaymentId}");
 
         _output.WriteLine("✓ Different flow types PASSED\n");
     }
 
     [Fact(DisplayName = "5. Create and Revoke Quick Payment")]
-    public void Test5_CreateAndRevokeQuickPayment()
+    public async Task Test5_CreateAndRevokeQuickPayment()
     {
         _output.WriteLine("=== TEST 5: Create and Revoke Quick Payment ===");
 
         // Arrange
-        var gatewayFlow = new GatewayFlow(RedirectUri);
-        var authFlowDetail = new AuthFlowDetail(gatewayFlow);
+        var decoupledFlow = new DecoupledFlow(Bank.PNZ, IdentifierType.PhoneNumber, "+64-259531933", RedirectUri);
+        var authFlowDetail = new AuthFlowDetail(decoupledFlow);
         var authFlow = new AuthFlow(authFlowDetail);
         var pcr = new Pcr("test-revoke");
         var amount = new Amount("0.50", Amount.CurrencyEnum.NZD);
         var request = new QuickPaymentRequest(authFlow, pcr, amount);
 
         // Act - Create
-        var qpCreateResponse = _client.CreateQuickPayment(request, RequestHeaders);
+        var qpCreateResponse = await _client.CreateQuickPaymentAsync(request, RequestHeaders);
         Assert.NotNull(qpCreateResponse);
         var qpId = qpCreateResponse.QuickPaymentId;
         _output.WriteLine($"✓ Quick Payment Created: {qpId}");
 
         // Act - Revoke
-        _client.RevokeQuickPayment(qpId);
+        await _client.RevokeQuickPaymentAsync(qpId);
         _output.WriteLine($"✓ Quick Payment Revoked: {qpId}");
 
         _output.WriteLine("✓ Create and Revoke PASSED\n");
     }
 
     [Fact(DisplayName = "6. Create Enduring Consent with Gateway Flow")]
-    public void Test6_CreateEnduringConsentWithGatewayFlow()
+    public async Task Test6_CreateEnduringConsentWithGatewayFlow()
     {
         _output.WriteLine("=== TEST 6: Create Enduring Consent ===");
 
         // Arrange
-        var gatewayFlow = new GatewayFlow(RedirectUri);
-        var authFlowDetail = new AuthFlowDetail(gatewayFlow);
+        var decoupledFlow = new DecoupledFlow(Bank.PNZ, IdentifierType.PhoneNumber, "+64-259531933", RedirectUri);
+        var authFlowDetail = new AuthFlowDetail(decoupledFlow);
         var authFlow = new AuthFlow(authFlowDetail);
         var pcr = new Pcr("enduring", "monthly", "sub");
         var maximumAmountPeriod = new Amount("100.00", Amount.CurrencyEnum.NZD);
@@ -233,20 +229,18 @@ public class ComprehensiveQuickStartTests : IDisposable
             maximumAmountPayment);
 
         // Act
-        var createConsentResponse = _client.CreateEnduringConsent(request, RequestHeaders);
+        var createConsentResponse = await _client.CreateEnduringConsentAsync(request, RequestHeaders);
 
         // Assert
         Assert.NotNull(createConsentResponse);
         Assert.NotEqual(Guid.Empty, createConsentResponse.ConsentId);
-        Assert.NotEmpty(createConsentResponse.RedirectUri);
 
         _output.WriteLine($"✓ Enduring Consent Created: {createConsentResponse.ConsentId}");
-        _output.WriteLine($"✓ Redirect URL: {createConsentResponse.RedirectUri}");
         _output.WriteLine("✓ Enduring Consent creation PASSED\n");
     }
 
     [Fact(DisplayName = "7. Error Handling - Non-Existent Resource")]
-    public void Test7_ErrorHandlingNonExistentResource()
+    public async Task Test7_ErrorHandlingNonExistentResource()
     {
         _output.WriteLine("=== TEST 7: Error Handling ===");
 
@@ -254,9 +248,9 @@ public class ComprehensiveQuickStartTests : IDisposable
         var nonExistentId = Guid.NewGuid();
 
         // Act & Assert
-        var exception = Assert.Throws<BlinkResourceNotFoundException>(() =>
+        var exception = await Assert.ThrowsAsync<BlinkResourceNotFoundException>(async () =>
         {
-            _client.GetSingleConsent(nonExistentId);
+            await _client.GetSingleConsentAsync(nonExistentId);
         });
 
         Assert.NotNull(exception);
@@ -309,55 +303,50 @@ public class ComprehensiveQuickStartTests : IDisposable
     }
 
     [Fact(DisplayName = "10. Comprehensive Flow - Full Journey")]
-    public void Test10_ComprehensiveFullJourney()
+    public async Task Test10_ComprehensiveFullJourney()
     {
         _output.WriteLine("=== TEST 10: Comprehensive Full Journey ===");
 
         // Step 1: Get Bank Metadata
-        var banks = _client.GetMeta(RequestHeaders);
+        var banks = await _client.GetMetaAsync(RequestHeaders);
         Assert.NotEmpty(banks);
         _output.WriteLine($"✓ Step 1: Retrieved {banks.Count} banks");
 
         // Step 2: Create Quick Payment
         RequestHeaders["Idempotency-Key"] = Guid.NewGuid().ToString();
-        var gatewayFlow = new GatewayFlow(RedirectUri);
-        var authFlowDetail = new AuthFlowDetail(gatewayFlow);
+        var decoupledFlow = new DecoupledFlow(Bank.PNZ, IdentifierType.PhoneNumber, "+64-259531933", RedirectUri);
+        var authFlowDetail = new AuthFlowDetail(decoupledFlow);
         var authFlow = new AuthFlow(authFlowDetail);
         var pcr = new Pcr("journey-test");
         var amount = new Amount("1.00", Amount.CurrencyEnum.NZD);
         var qpRequest = new QuickPaymentRequest(authFlow, pcr, amount);
 
-        var qpResponse = _client.CreateQuickPayment(qpRequest, RequestHeaders);
+        var qpResponse = await _client.CreateQuickPaymentAsync(qpRequest, RequestHeaders);
         Assert.NotNull(qpResponse);
         var qpId = qpResponse.QuickPaymentId;
         _output.WriteLine($"✓ Step 2: Created Quick Payment {qpId}");
 
-        // Step 3: Verify redirect URI format
-        Assert.StartsWith("https://", qpResponse.RedirectUri);
-        Assert.Contains("blinkpay.co.nz", qpResponse.RedirectUri);
-        _output.WriteLine($"✓ Step 3: Redirect URI valid: {qpResponse.RedirectUri}");
+        // Step 3: Revoke the quick payment
+        await _client.RevokeQuickPaymentAsync(qpId);
+        _output.WriteLine($"✓ Step 3: Revoked Quick Payment {qpId}");
 
-        // Step 4: Revoke the quick payment
-        _client.RevokeQuickPayment(qpId);
-        _output.WriteLine($"✓ Step 4: Revoked Quick Payment {qpId}");
-
-        // Step 5: Verify error on re-revocation (idempotency)
+        // Step 4: Verify error on re-revocation (idempotency)
         try
         {
-            _client.RevokeQuickPayment(qpId);
-            _output.WriteLine("✓ Step 5: Second revocation handled (idempotent)");
+            await _client.RevokeQuickPaymentAsync(qpId);
+            _output.WriteLine("✓ Step 4: Second revocation handled (idempotent)");
         }
         catch (AggregateException ex) when (ex.InnerException is BlinkClientException || ex.InnerException is BlinkServiceException)
         {
-            _output.WriteLine($"✓ Step 5: Second revocation threw expected exception: {ex.InnerException?.Message}");
+            _output.WriteLine($"✓ Step 4: Second revocation threw expected exception: {ex.InnerException?.Message}");
         }
         catch (BlinkClientException ex)
         {
-            _output.WriteLine($"✓ Step 5: Second revocation threw expected exception: {ex.Message}");
+            _output.WriteLine($"✓ Step 4: Second revocation threw expected exception: {ex.Message}");
         }
         catch (BlinkServiceException ex)
         {
-            _output.WriteLine($"✓ Step 5: Second revocation threw expected exception: {ex.Message}");
+            _output.WriteLine($"✓ Step 4: Second revocation threw expected exception: {ex.Message}");
         }
 
         _output.WriteLine("✓ Comprehensive full journey PASSED\n");

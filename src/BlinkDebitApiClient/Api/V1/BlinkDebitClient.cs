@@ -217,59 +217,11 @@ public class BlinkDebitClient
     /// Returns the BankMetadata List
     /// </summary>
     /// <param name="requestHeaders">the Dictionary of optional request headers.</param>
-    /// <returns>Returns BankMetadata List</returns>
-    /// <exception cref="BlinkServiceException">Thrown when an exception occurs</exception>
-    public List<BankMetadata> GetMeta(Dictionary<string, string?>? requestHeaders = null)
-    {
-        try
-        {
-            return GetMetaAsync(requestHeaders).Result;
-        }
-        catch (Exception e)
-        {
-            if (e.InnerException is BlinkServiceException blinkServiceException)
-            {
-                throw blinkServiceException;
-            }
-
-            throw new BlinkServiceException(e.Message, e);
-        }
-    }
-
-    /// <summary>
-    /// Returns the BankMetadata List
-    /// </summary>
-    /// <param name="requestHeaders">the Dictionary of optional request headers.</param>
     /// <returns>Returns Task of BankMetadata List</returns>
     /// <exception cref="BlinkServiceException">Thrown when an exception occurs</exception>
     public async Task<List<BankMetadata>> GetMetaAsync(Dictionary<string, string?>? requestHeaders = null)
     {
         return await _bankMetadataApi.GetMetaAsync(requestHeaders);
-    }
-
-    /// <summary>
-    /// Creates a single consent
-    /// </summary>
-    /// <param name="singleConsentRequest">The consent request parameters</param>
-    /// <param name="requestHeaders">the Dictionary of optional request headers.</param>
-    /// <returns>CreateConsentResponse</returns>
-    /// <exception cref="BlinkServiceException">Thrown when an exception occurs</exception>
-    public CreateConsentResponse CreateSingleConsent(SingleConsentRequest singleConsentRequest,
-        Dictionary<string, string?>? requestHeaders = null)
-    {
-        try
-        {
-            return CreateSingleConsentAsync(singleConsentRequest, requestHeaders).Result;
-        }
-        catch (Exception e)
-        {
-            if (e.InnerException is BlinkServiceException blinkServiceException)
-            {
-                throw blinkServiceException;
-            }
-
-            throw new BlinkServiceException(e.Message, e);
-        }
     }
 
     /// <summary>
@@ -290,138 +242,11 @@ public class BlinkDebitClient
     /// </summary>
     /// <param name="consentId">The consent ID</param>
     /// <param name="requestHeaders">the Dictionary of optional request headers.</param>
-    /// <returns>Consent</returns>
-    /// <exception cref="BlinkServiceException">Thrown when an exception occurs</exception>
-    public Consent GetSingleConsent(Guid consentId, Dictionary<string, string?>? requestHeaders = null)
-    {
-        try
-        {
-            return GetSingleConsentAsync(consentId, requestHeaders).Result;
-        }
-        catch (Exception e)
-        {
-            if (e.InnerException is BlinkServiceException blinkServiceException)
-            {
-                throw blinkServiceException;
-            }
-
-            throw new BlinkServiceException(e.Message, e);
-        }
-    }
-
-    /// <summary>
-    /// Retrieves an existing consent by ID
-    /// </summary>
-    /// <param name="consentId">The consent ID</param>
-    /// <param name="requestHeaders">the Dictionary of optional request headers.</param>
     /// <returns>Task of Consent</returns>
     /// <exception cref="BlinkServiceException">Thrown when an exception occurs</exception>
     public async Task<Consent> GetSingleConsentAsync(Guid consentId, Dictionary<string, string?>? requestHeaders = null)
     {
         return await _singleConsentsApi.GetSingleConsentAsync(consentId, requestHeaders);
-    }
-
-    /// <summary>
-    /// Retrieves an authorised single consent by ID within the specified time
-    /// </summary>
-    /// <param name="consentId">The consent ID</param>
-    /// <param name="maxWaitSeconds">The number of seconds to wait</param>
-    /// <returns>Consent</returns>
-    /// <exception cref="BlinkConsentFailureException">Thrown when a consent exception occurs</exception>
-    /// <exception cref="BlinkServiceException">Thrown when a Blink Debit service exception occurs</exception>
-    public Consent AwaitAuthorisedSingleConsent(Guid consentId, int maxWaitSeconds)
-    {
-        var retryPolicy = Policy<Consent>
-            .Handle<BlinkRetryableException>()
-            .WaitAndRetryAsync(maxWaitSeconds, retryAttempt => TimeSpan.FromSeconds(1),
-                (exception, timeSpan, retryCount, context) =>
-                {
-                    if (retryCount == maxWaitSeconds)
-                    {
-                        throw new BlinkConsentTimeoutException();
-                    }
-                });
-
-        try
-        {
-            return retryPolicy.ExecuteAsync(async () =>
-            {
-                var consent = await GetSingleConsentAsync(consentId);
-
-                var status = consent.Status;
-                _logger.LogDebug("The last status polled was: {status} \tfor Single Consent ID: {consentId}", status,
-                    consentId);
-
-                if (Consent.StatusEnum.Authorised == status)
-                {
-                    return consent;
-                }
-
-                throw new BlinkRetryableException();
-            }).Result;
-        }
-        catch (BlinkConsentTimeoutException)
-        {
-            throw;
-        }
-        catch (BlinkServiceException)
-        {
-            throw;
-        }
-        catch (Exception e) when (e.InnerException is BlinkServiceException)
-        {
-            throw e.InnerException;
-        }
-        catch (Exception e)
-        {
-            if (e.InnerException != null)
-            {
-                throw new BlinkServiceException(e.InnerException.Message);
-            }
-
-            throw new BlinkServiceException(e.Message, e);
-        }
-    }
-
-    /// <summary>
-    /// Retrieves an authorised single consent by ID within the specified time
-    /// </summary>
-    /// <param name="consentId">The consent ID</param>
-    /// <param name="maxWaitSeconds">The number of seconds to wait</param>
-    /// <returns>Consent</returns>
-    /// <exception cref="BlinkConsentFailureException">Thrown when a consent exception occurs</exception>
-    /// <exception cref="BlinkServiceException">Thrown when a Blink Debit service exception occurs</exception>
-    public Consent AwaitAuthorisedSingleConsentOrThrowException(Guid consentId, int maxWaitSeconds)
-    {
-        try
-        {
-            return AwaitAuthorisedSingleConsentAsync(consentId, maxWaitSeconds).Result;
-        }
-        catch (BlinkConsentTimeoutException)
-        {
-            throw;
-        }
-        catch (BlinkServiceException)
-        {
-            throw;
-        }
-        catch (Exception e) when (e.InnerException is BlinkConsentTimeoutException)
-        {
-            throw e.InnerException;
-        }
-        catch (Exception e) when (e.InnerException is BlinkServiceException)
-        {
-            throw e.InnerException;
-        }
-        catch (Exception e)
-        {
-            if (e.InnerException != null)
-            {
-                throw new BlinkServiceException(e.InnerException.Message);
-            }
-
-            throw new BlinkServiceException(e.Message, e);
-        }
     }
 
     /// <summary>
@@ -437,14 +262,7 @@ public class BlinkDebitClient
     {
         var retryPolicy = Policy<Consent>
             .Handle<BlinkRetryableException>()
-            .WaitAndRetryAsync(maxWaitSeconds, retryAttempt => TimeSpan.FromSeconds(1),
-                (exception, timeSpan, retryCount, context) =>
-                {
-                    if (retryCount == maxWaitSeconds)
-                    {
-                        throw new BlinkConsentTimeoutException();
-                    }
-                });
+            .WaitAndRetryAsync(maxWaitSeconds, retryAttempt => TimeSpan.FromSeconds(1));
 
         try
         {
@@ -484,14 +302,39 @@ public class BlinkDebitClient
         {
             throw;
         }
-        catch (Exception e) when (e.InnerException is BlinkServiceException)
+        catch (BlinkRetryableException)
+        {
+            // If we get here, all retries have been exhausted - this is a timeout
+            throw new BlinkConsentTimeoutException("Consent timed out");
+        }
+        catch (Exception e) when (e.InnerException is BlinkServiceException &&
+                                  e.InnerException is not BlinkConsentTimeoutException &&
+                                  e.InnerException is not BlinkConsentRejectedException &&
+                                  e.InnerException is not BlinkPaymentTimeoutException &&
+                                  e.InnerException is not BlinkPaymentRejectedException)
         {
             throw e.InnerException;
         }
+        catch (Exception e) when (e.InnerException is BlinkRetryableException)
+        {
+            // If we get here, all retries have been exhausted - this is a timeout
+            throw new BlinkConsentTimeoutException("Consent timed out");
+        }
         catch (Exception e)
         {
+            // Don't wrap timeout or rejection exceptions
+            if (e is BlinkConsentTimeoutException || e is BlinkConsentRejectedException)
+            {
+                throw;
+            }
+
             if (e.InnerException != null)
             {
+                // Don't wrap inner timeout or rejection exceptions
+                if (e.InnerException is BlinkConsentTimeoutException || e.InnerException is BlinkConsentRejectedException)
+                {
+                    throw e.InnerException;
+                }
                 throw new BlinkServiceException(e.InnerException.Message, e);
             }
 
@@ -504,48 +347,11 @@ public class BlinkDebitClient
     /// </summary>
     /// <param name="consentId">The consent ID</param>
     /// <param name="requestHeaders">the Dictionary of optional request headers.</param>
-    /// <returns>void</returns>
-    /// <exception cref="BlinkServiceException">Thrown when an exception occurs</exception>
-    public void RevokeSingleConsent(Guid consentId, Dictionary<string, string?>? requestHeaders = null)
-    {
-        RevokeSingleConsentAsync(consentId, requestHeaders).Wait();
-    }
-
-    /// <summary>
-    /// Revokes an existing consent by ID
-    /// </summary>
-    /// <param name="consentId">The consent ID</param>
-    /// <param name="requestHeaders">the Dictionary of optional request headers.</param>
     /// <returns>Task of void</returns>
     /// <exception cref="BlinkServiceException">Thrown when an exception occurs</exception>
     public async Task RevokeSingleConsentAsync(Guid consentId, Dictionary<string, string?>? requestHeaders = null)
     {
         await _singleConsentsApi.RevokeSingleConsentAsync(consentId, requestHeaders);
-    }
-
-    /// <summary>
-    /// Creates an enduring consent
-    /// </summary>
-    /// <param name="enduringConsentRequest">The consent request parameters</param>
-    /// <param name="requestHeaders">the Dictionary of optional request headers.</param>
-    /// <returns>CreateConsentResponse</returns>
-    /// <exception cref="BlinkServiceException">Thrown when an exception occurs</exception>
-    public CreateConsentResponse CreateEnduringConsent(EnduringConsentRequest enduringConsentRequest,
-        Dictionary<string, string?>? requestHeaders = null)
-    {
-        try
-        {
-            return CreateEnduringConsentAsync(enduringConsentRequest, requestHeaders).Result;
-        }
-        catch (Exception e)
-        {
-            if (e.InnerException is BlinkServiceException blinkServiceException)
-            {
-                throw blinkServiceException;
-            }
-
-            throw new BlinkServiceException(e.Message, e);
-        }
     }
 
     /// <summary>
@@ -566,156 +372,12 @@ public class BlinkDebitClient
     /// </summary>
     /// <param name="consentId">The consent ID</param>
     /// <param name="requestHeaders">the Dictionary of optional request headers.</param>
-    /// <returns>Consent</returns>
-    /// <exception cref="BlinkServiceException">Thrown when an exception occurs</exception>
-    public Consent GetEnduringConsent(Guid consentId, Dictionary<string, string?>? requestHeaders = null)
-    {
-        try
-        {
-            return GetEnduringConsentAsync(consentId, requestHeaders).Result;
-        }
-        catch (Exception e)
-        {
-            if (e.InnerException is BlinkServiceException blinkServiceException)
-            {
-                throw blinkServiceException;
-            }
-
-            throw new BlinkServiceException(e.Message, e);
-        }
-    }
-
-    /// <summary>
-    /// Retrieves an existing consent by ID
-    /// </summary>
-    /// <param name="consentId">The consent ID</param>
-    /// <param name="requestHeaders">the Dictionary of optional request headers.</param>
     /// <returns>Task of Consent</returns>
     /// <exception cref="BlinkServiceException">Thrown when an exception occurs</exception>
     public async Task<Consent> GetEnduringConsentAsync(Guid consentId,
         Dictionary<string, string?>? requestHeaders = null)
     {
         return await _enduringConsentsApi.GetEnduringConsentAsync(consentId, requestHeaders);
-    }
-
-    /// <summary>
-    /// Retrieves an authorised enduring consent by ID within the specified time
-    /// </summary>
-    /// <param name="consentId">The consent ID</param>
-    /// <param name="maxWaitSeconds">The number of seconds to wait</param>
-    /// <returns>Consent</returns>
-    /// <exception cref="BlinkConsentFailureException">Thrown when a consent exception occurs</exception>
-    /// <exception cref="BlinkServiceException">Thrown when a Blink Debit service exception occurs</exception>
-    public Consent AwaitAuthorisedEnduringConsent(Guid consentId, int maxWaitSeconds)
-    {
-        var retryPolicy = Policy<Consent>
-            .Handle<BlinkRetryableException>()
-            .WaitAndRetryAsync(maxWaitSeconds, retryAttempt => TimeSpan.FromSeconds(1),
-                (exception, timeSpan, retryCount, context) =>
-                {
-                    if (retryCount == maxWaitSeconds)
-                    {
-                        var blinkConsentTimeoutException = new BlinkConsentTimeoutException();
-
-                        try
-                        {
-                            RevokeEnduringConsentAsync(consentId).Wait();
-                            _logger.LogInformation(
-                                "The max wait time was reached while waiting for the enduring consent to complete and the payment has been revoked with the server. Enduring consent ID: {consentId}",
-                                consentId);
-                        }
-                        catch (Exception revokeException)
-                        {
-                            _logger.LogError(
-                                "Waiting for the enduring consent was not successful and it was also not able to be revoked with the server due to: {message}. Enduring consent ID: {consentId}",
-                                revokeException.Message, consentId);
-                            throw new AggregateException(blinkConsentTimeoutException, revokeException);
-                        }
-
-                        throw blinkConsentTimeoutException;
-                    }
-                });
-
-        try
-        {
-            return retryPolicy.ExecuteAsync(async () =>
-            {
-                var consent = await GetEnduringConsentAsync(consentId);
-
-                var status = consent.Status;
-                _logger.LogDebug("The last status polled was: {status} \tfor Enduring Consent ID: {consentId}", status,
-                    consentId);
-
-                if (Consent.StatusEnum.Authorised == status)
-                {
-                    return consent;
-                }
-
-                throw new BlinkRetryableException();
-            }).Result;
-        }
-        catch (BlinkConsentTimeoutException)
-        {
-            throw;
-        }
-        catch (BlinkServiceException)
-        {
-            throw;
-        }
-        catch (Exception e) when (e.InnerException is BlinkServiceException)
-        {
-            throw e.InnerException;
-        }
-        catch (Exception e)
-        {
-            if (e.InnerException != null)
-            {
-                throw new BlinkServiceException(e.InnerException.Message);
-            }
-
-            throw new BlinkServiceException(e.Message, e);
-        }
-    }
-
-    /// <summary>
-    /// Retrieves an authorised enduring consent by ID within the specified time
-    /// </summary>
-    /// <param name="consentId">The consent ID</param>
-    /// <param name="maxWaitSeconds">The number of seconds to wait</param>
-    /// <returns>Consent</returns>
-    /// <exception cref="BlinkConsentFailureException">Thrown when a consent exception occurs</exception>
-    /// <exception cref="BlinkServiceException">Thrown when a Blink Debit service exception occurs</exception>
-    public Consent AwaitAuthorisedEnduringConsentOrThrowException(Guid consentId, int maxWaitSeconds)
-    {
-        try
-        {
-            return AwaitAuthorisedEnduringConsentAsync(consentId, maxWaitSeconds).Result;
-        }
-        catch (BlinkConsentTimeoutException)
-        {
-            throw;
-        }
-        catch (BlinkServiceException)
-        {
-            throw;
-        }
-        catch (Exception e) when (e.InnerException is BlinkConsentTimeoutException)
-        {
-            throw e.InnerException;
-        }
-        catch (Exception e) when (e.InnerException is BlinkServiceException)
-        {
-            throw e.InnerException;
-        }
-        catch (Exception e)
-        {
-            if (e.InnerException != null)
-            {
-                throw new BlinkServiceException(e.InnerException.Message);
-            }
-
-            throw new BlinkServiceException(e.Message, e);
-        }
     }
 
     /// <summary>
@@ -731,31 +393,7 @@ public class BlinkDebitClient
     {
         var retryPolicy = Policy<Consent>
             .Handle<BlinkRetryableException>()
-            .WaitAndRetryAsync(maxWaitSeconds, retryAttempt => TimeSpan.FromSeconds(1),
-                (exception, timeSpan, retryCount, context) =>
-                {
-                    if (retryCount == maxWaitSeconds)
-                    {
-                        var blinkConsentTimeoutException = new BlinkConsentTimeoutException();
-
-                        try
-                        {
-                            RevokeEnduringConsentAsync(consentId).Wait();
-                            _logger.LogInformation(
-                                "The max wait time was reached while waiting for the enduring consent to complete and the payment has been revoked with the server. Enduring consent ID: {consentId}",
-                                consentId);
-                        }
-                        catch (Exception revokeException)
-                        {
-                            _logger.LogError(
-                                "Waiting for the enduring consent was not successful and it was also not able to be revoked with the server due to: {message}. Enduring consent ID: {consentId}",
-                                revokeException.Message, consentId);
-                            throw new AggregateException(blinkConsentTimeoutException, revokeException);
-                        }
-
-                        throw blinkConsentTimeoutException;
-                    }
-                });
+            .WaitAndRetryAsync(maxWaitSeconds, retryAttempt => TimeSpan.FromSeconds(1));
 
         try
         {
@@ -795,14 +433,73 @@ public class BlinkDebitClient
         {
             throw;
         }
-        catch (Exception e) when (e.InnerException is BlinkServiceException)
+        catch (BlinkRetryableException)
+        {
+            // If we get here, all retries have been exhausted - revoke and throw timeout exception
+            var blinkConsentTimeoutException = new BlinkConsentTimeoutException("Consent timed out");
+
+            try
+            {
+                await RevokeEnduringConsentAsync(consentId);
+                _logger.LogInformation(
+                    "The max wait time was reached while waiting for the enduring consent to complete and the payment has been revoked with the server. Enduring consent ID: {consentId}",
+                    consentId);
+            }
+            catch (Exception revokeException)
+            {
+                _logger.LogError(
+                    "Waiting for the enduring consent was not successful and it was also not able to be revoked with the server due to: {message}. Enduring consent ID: {consentId}",
+                    revokeException.Message, consentId);
+                throw new AggregateException(blinkConsentTimeoutException, revokeException);
+            }
+
+            throw blinkConsentTimeoutException;
+        }
+        catch (Exception e) when (e.InnerException is BlinkServiceException &&
+                                  e.InnerException is not BlinkConsentTimeoutException &&
+                                  e.InnerException is not BlinkConsentRejectedException &&
+                                  e.InnerException is not BlinkPaymentTimeoutException &&
+                                  e.InnerException is not BlinkPaymentRejectedException)
         {
             throw e.InnerException;
         }
+        catch (Exception e) when (e.InnerException is BlinkRetryableException)
+        {
+            // If we get here, all retries have been exhausted - revoke and throw timeout exception
+            var blinkConsentTimeoutException = new BlinkConsentTimeoutException("Consent timed out");
+
+            try
+            {
+                await RevokeEnduringConsentAsync(consentId);
+                _logger.LogInformation(
+                    "The max wait time was reached while waiting for the enduring consent to complete and the payment has been revoked with the server. Enduring consent ID: {consentId}",
+                    consentId);
+            }
+            catch (Exception revokeException)
+            {
+                _logger.LogError(
+                    "Waiting for the enduring consent was not successful and it was also not able to be revoked with the server due to: {message}. Enduring consent ID: {consentId}",
+                    revokeException.Message, consentId);
+                throw new AggregateException(blinkConsentTimeoutException, revokeException);
+            }
+
+            throw blinkConsentTimeoutException;
+        }
         catch (Exception e)
         {
+            // Don't wrap timeout or rejection exceptions
+            if (e is BlinkConsentTimeoutException || e is BlinkConsentRejectedException || e is BlinkPaymentTimeoutException)
+            {
+                throw;
+            }
+
             if (e.InnerException != null)
             {
+                // Don't wrap inner timeout or rejection exceptions
+                if (e.InnerException is BlinkConsentTimeoutException || e.InnerException is BlinkConsentRejectedException || e.InnerException is BlinkPaymentTimeoutException)
+                {
+                    throw e.InnerException;
+                }
                 throw new BlinkServiceException(e.InnerException.Message, e);
             }
 
@@ -817,46 +514,9 @@ public class BlinkDebitClient
     /// <param name="requestHeaders">the Dictionary of optional request headers.</param>
     /// <returns>Task of void</returns>
     /// <exception cref="BlinkServiceException">Thrown when an exception occurs</exception>
-    public void RevokeEnduringConsent(Guid consentId, Dictionary<string, string?>? requestHeaders = null)
-    {
-        RevokeEnduringConsentAsync(consentId, requestHeaders).Wait();
-    }
-
-    /// <summary>
-    /// Revokes an existing consent by ID
-    /// </summary>
-    /// <param name="consentId">The consent ID</param>
-    /// <param name="requestHeaders">the Dictionary of optional request headers.</param>
-    /// <returns>Task of void</returns>
-    /// <exception cref="BlinkServiceException">Thrown when an exception occurs</exception>
     public async Task RevokeEnduringConsentAsync(Guid consentId, Dictionary<string, string?>? requestHeaders = null)
     {
         await _enduringConsentsApi.RevokeEnduringConsentAsync(consentId, requestHeaders);
-    }
-
-    /// <summary>
-    /// Creates a quick payment
-    /// </summary>
-    /// <param name="quickPaymentRequest">The quick payment request parameters</param>
-    /// <param name="requestHeaders">the Dictionary of optional request headers.</param>
-    /// <returns>CreateQuickPaymentResponse</returns>
-    /// <exception cref="BlinkServiceException">Thrown when an exception occurs</exception>
-    public CreateQuickPaymentResponse CreateQuickPayment(QuickPaymentRequest quickPaymentRequest,
-        Dictionary<string, string?>? requestHeaders = null)
-    {
-        try
-        {
-            return CreateQuickPaymentAsync(quickPaymentRequest, requestHeaders).Result;
-        }
-        catch (Exception e)
-        {
-            if (e.InnerException is BlinkServiceException blinkServiceException)
-            {
-                throw blinkServiceException;
-            }
-
-            throw new BlinkServiceException(e.Message, e);
-        }
     }
 
     /// <summary>
@@ -877,156 +537,12 @@ public class BlinkDebitClient
     /// </summary>
     /// <param name="quickPaymentId">The quick payment ID</param>
     /// <param name="requestHeaders">the Dictionary of optional request headers.</param>
-    /// <returns>QuickPaymentResponse</returns>
-    /// <exception cref="BlinkServiceException">Thrown when an exception occurs</exception>
-    public QuickPaymentResponse GetQuickPayment(Guid quickPaymentId, Dictionary<string, string?>? requestHeaders = null)
-    {
-        try
-        {
-            return GetQuickPaymentAsync(quickPaymentId, requestHeaders).Result;
-        }
-        catch (Exception e)
-        {
-            if (e.InnerException is BlinkServiceException blinkServiceException)
-            {
-                throw blinkServiceException;
-            }
-
-            throw new BlinkServiceException(e.Message, e);
-        }
-    }
-
-    /// <summary>
-    /// Retrieves an existing quick payment by ID
-    /// </summary>
-    /// <param name="quickPaymentId">The quick payment ID</param>
-    /// <param name="requestHeaders">the Dictionary of optional request headers.</param>
     /// <returns>Task of QuickPaymentResponse</returns>
     /// <exception cref="BlinkServiceException">Thrown when an exception occurs</exception>
     public async Task<QuickPaymentResponse> GetQuickPaymentAsync(Guid quickPaymentId,
         Dictionary<string, string?>? requestHeaders = null)
     {
         return await _quickPaymentsApi.GetQuickPaymentAsync(quickPaymentId, requestHeaders);
-    }
-
-    /// <summary>
-    /// Retrieves a successful quick payment by ID within the specified time
-    /// </summary>
-    /// <param name="quickPaymentId">The quick payment ID</param>
-    /// <param name="maxWaitSeconds">The number of seconds to wait</param>
-    /// <returns>QuickPaymentResponse</returns>
-    /// <exception cref="BlinkConsentFailureException">Thrown when a consent exception occurs</exception>
-    /// <exception cref="BlinkServiceException">Thrown when a Blink Debit service exception occurs</exception>
-    public QuickPaymentResponse AwaitSuccessfulQuickPayment(Guid quickPaymentId, int maxWaitSeconds)
-    {
-        var retryPolicy = Policy<QuickPaymentResponse>
-            .Handle<BlinkRetryableException>()
-            .WaitAndRetryAsync(maxWaitSeconds, retryAttempt => TimeSpan.FromSeconds(1),
-                (exception, timeSpan, retryCount, context) =>
-                {
-                    if (retryCount == maxWaitSeconds)
-                    {
-                        var blinkConsentTimeoutException = new BlinkConsentTimeoutException();
-
-                        try
-                        {
-                            RevokeQuickPaymentAsync(quickPaymentId).Wait();
-                            _logger.LogInformation(
-                                "The max wait time was reached while waiting for the quick payment to complete and the payment has been revoked with the server. Quick payment ID: {consentId}",
-                                quickPaymentId);
-                        }
-                        catch (Exception revokeException)
-                        {
-                            _logger.LogError(
-                                "Waiting for the quick payment was not successful and it was also not able to be revoked with the server due to: {message}. Quick payment ID: {consentId}",
-                                revokeException.Message, quickPaymentId);
-                            throw new AggregateException(blinkConsentTimeoutException, revokeException);
-                        }
-
-                        throw blinkConsentTimeoutException;
-                    }
-                });
-
-        try
-        {
-            return retryPolicy.ExecuteAsync(async () =>
-            {
-                var quickPayment = await GetQuickPaymentAsync(quickPaymentId);
-
-                var status = quickPayment.Consent.Status;
-                _logger.LogDebug("The last status polled was: {status} \tfor Quick Payment ID: {consentId}", status,
-                    quickPaymentId);
-
-                if (Consent.StatusEnum.Authorised == status)
-                {
-                    return quickPayment;
-                }
-
-                throw new BlinkRetryableException();
-            }).Result;
-        }
-        catch (BlinkConsentTimeoutException)
-        {
-            throw;
-        }
-        catch (BlinkServiceException)
-        {
-            throw;
-        }
-        catch (Exception e) when (e.InnerException is BlinkServiceException)
-        {
-            throw e.InnerException;
-        }
-        catch (Exception e)
-        {
-            if (e.InnerException != null)
-            {
-                throw new BlinkServiceException(e.InnerException.Message);
-            }
-
-            throw new BlinkServiceException(e.Message, e);
-        }
-    }
-
-    /// <summary>
-    /// Retrieves a successful quick payment by ID within the specified time
-    /// </summary>
-    /// <param name="quickPaymentId">The quick payment ID</param>
-    /// <param name="maxWaitSeconds">The number of seconds to wait</param>
-    /// <returns>QuickPaymentResponse</returns>
-    /// <exception cref="BlinkConsentFailureException">Thrown when a consent exception occurs</exception>
-    /// <exception cref="BlinkServiceException">Thrown when a Blink Debit service exception occurs</exception>
-    public QuickPaymentResponse AwaitSuccessfulQuickPaymentOrThrowException(Guid quickPaymentId, int maxWaitSeconds)
-    {
-        try
-        {
-            return AwaitSuccessfulQuickPaymentAsync(quickPaymentId, maxWaitSeconds).Result;
-        }
-        catch (BlinkConsentTimeoutException)
-        {
-            throw;
-        }
-        catch (BlinkServiceException)
-        {
-            throw;
-        }
-        catch (Exception e) when (e.InnerException is BlinkConsentTimeoutException)
-        {
-            throw e.InnerException;
-        }
-        catch (Exception e) when (e.InnerException is BlinkServiceException)
-        {
-            throw e.InnerException;
-        }
-        catch (Exception e)
-        {
-            if (e.InnerException != null)
-            {
-                throw new BlinkServiceException(e.InnerException.Message);
-            }
-
-            throw new BlinkServiceException(e.Message, e);
-        }
     }
 
     /// <summary>
@@ -1042,31 +558,7 @@ public class BlinkDebitClient
     {
         var retryPolicy = Policy<QuickPaymentResponse>
             .Handle<BlinkRetryableException>()
-            .WaitAndRetryAsync(maxWaitSeconds, retryAttempt => TimeSpan.FromSeconds(1),
-                (exception, timeSpan, retryCount, context) =>
-                {
-                    if (retryCount == maxWaitSeconds)
-                    {
-                        var blinkConsentTimeoutException = new BlinkConsentTimeoutException();
-
-                        try
-                        {
-                            RevokeQuickPaymentAsync(quickPaymentId).Wait();
-                            _logger.LogInformation(
-                                "The max wait time was reached while waiting for the quick payment to complete and the payment has been revoked with the server. Quick payment ID: {consentId}",
-                                quickPaymentId);
-                        }
-                        catch (Exception revokeException)
-                        {
-                            _logger.LogError(
-                                "Waiting for the quick payment was not successful and it was also not able to be revoked with the server due to: {message}. Quick payment ID: {consentId}",
-                                revokeException.Message, quickPaymentId);
-                            throw new AggregateException(blinkConsentTimeoutException, revokeException);
-                        }
-
-                        throw blinkConsentTimeoutException;
-                    }
-                });
+            .WaitAndRetryAsync(maxWaitSeconds, retryAttempt => TimeSpan.FromSeconds(1));
 
         try
         {
@@ -1107,14 +599,73 @@ public class BlinkDebitClient
         {
             throw;
         }
-        catch (Exception e) when (e.InnerException is BlinkServiceException)
+        catch (BlinkRetryableException)
+        {
+            // If we get here, all retries have been exhausted - revoke and throw timeout exception
+            var blinkConsentTimeoutException = new BlinkConsentTimeoutException("Consent timed out");
+
+            try
+            {
+                await RevokeQuickPaymentAsync(quickPaymentId);
+                _logger.LogInformation(
+                    "The max wait time was reached while waiting for the quick payment to complete and the payment has been revoked with the server. Quick payment ID: {consentId}",
+                    quickPaymentId);
+            }
+            catch (Exception revokeException)
+            {
+                _logger.LogError(
+                    "Waiting for the quick payment was not successful and it was also not able to be revoked with the server due to: {message}. Quick payment ID: {consentId}",
+                    revokeException.Message, quickPaymentId);
+                throw new AggregateException(blinkConsentTimeoutException, revokeException);
+            }
+
+            throw blinkConsentTimeoutException;
+        }
+        catch (Exception e) when (e.InnerException is BlinkServiceException &&
+                                  e.InnerException is not BlinkConsentTimeoutException &&
+                                  e.InnerException is not BlinkConsentRejectedException &&
+                                  e.InnerException is not BlinkPaymentTimeoutException &&
+                                  e.InnerException is not BlinkPaymentRejectedException)
         {
             throw e.InnerException;
         }
+        catch (Exception e) when (e.InnerException is BlinkRetryableException)
+        {
+            // If we get here, all retries have been exhausted - revoke and throw timeout exception
+            var blinkConsentTimeoutException = new BlinkConsentTimeoutException("Consent timed out");
+
+            try
+            {
+                await RevokeQuickPaymentAsync(quickPaymentId);
+                _logger.LogInformation(
+                    "The max wait time was reached while waiting for the quick payment to complete and the payment has been revoked with the server. Quick payment ID: {consentId}",
+                    quickPaymentId);
+            }
+            catch (Exception revokeException)
+            {
+                _logger.LogError(
+                    "Waiting for the quick payment was not successful and it was also not able to be revoked with the server due to: {message}. Quick payment ID: {consentId}",
+                    revokeException.Message, quickPaymentId);
+                throw new AggregateException(blinkConsentTimeoutException, revokeException);
+            }
+
+            throw blinkConsentTimeoutException;
+        }
         catch (Exception e)
         {
+            // Don't wrap timeout or rejection exceptions
+            if (e is BlinkConsentTimeoutException || e is BlinkConsentRejectedException)
+            {
+                throw;
+            }
+
             if (e.InnerException != null)
             {
+                // Don't wrap inner timeout or rejection exceptions
+                if (e.InnerException is BlinkConsentTimeoutException || e.InnerException is BlinkConsentRejectedException)
+                {
+                    throw e.InnerException;
+                }
                 throw new BlinkServiceException(e.InnerException.Message, e);
             }
 
@@ -1129,46 +680,9 @@ public class BlinkDebitClient
     /// <param name="requestHeaders">the Dictionary of optional request headers.</param>
     /// <returns>Task of void</returns>
     /// <exception cref="BlinkServiceException">Thrown when an exception occurs</exception>
-    public void RevokeQuickPayment(Guid quickPaymentId, Dictionary<string, string?>? requestHeaders = null)
-    {
-        RevokeQuickPaymentAsync(quickPaymentId, requestHeaders).Wait();
-    }
-
-    /// <summary>
-    /// Revokes an existing quick payment by ID
-    /// </summary>
-    /// <param name="quickPaymentId">The quick payment ID</param>
-    /// <param name="requestHeaders">the Dictionary of optional request headers.</param>
-    /// <returns>Task of void</returns>
-    /// <exception cref="BlinkServiceException">Thrown when an exception occurs</exception>
     public async Task RevokeQuickPaymentAsync(Guid quickPaymentId, Dictionary<string, string?>? requestHeaders = null)
     {
         await _quickPaymentsApi.RevokeQuickPaymentAsync(quickPaymentId, requestHeaders);
-    }
-
-    /// <summary>
-    /// Creates a payment
-    /// </summary>
-    /// <param name="paymentRequest">The payment request parameters</param>
-    /// <param name="requestHeaders">the Dictionary of optional request headers.</param>
-    /// <returns>PaymentResponse</returns>
-    /// <exception cref="BlinkServiceException">Thrown when an exception occurs</exception>
-    public PaymentResponse CreatePayment(PaymentRequest paymentRequest,
-        Dictionary<string, string?>? requestHeaders = null)
-    {
-        try
-        {
-            return CreatePaymentAsync(paymentRequest, requestHeaders).Result;
-        }
-        catch (Exception e)
-        {
-            if (e.InnerException is BlinkServiceException blinkServiceException)
-            {
-                throw blinkServiceException;
-            }
-
-            throw new BlinkServiceException(e.Message, e);
-        }
     }
 
     /// <summary>
@@ -1189,138 +703,11 @@ public class BlinkDebitClient
     /// </summary>
     /// <param name="paymentId">The payment ID</param>
     /// <param name="requestHeaders">the Dictionary of optional request headers.</param>
-    /// <returns>Payment</returns>
-    /// <exception cref="BlinkServiceException">Thrown when an exception occurs</exception>
-    public Payment GetPayment(Guid paymentId, Dictionary<string, string?>? requestHeaders = null)
-    {
-        try
-        {
-            return GetPaymentAsync(paymentId, requestHeaders).Result;
-        }
-        catch (Exception e)
-        {
-            if (e.InnerException is BlinkServiceException blinkServiceException)
-            {
-                throw blinkServiceException;
-            }
-
-            throw new BlinkServiceException(e.Message, e);
-        }
-    }
-
-    /// <summary>
-    /// Retrieves an existing payment by ID
-    /// </summary>
-    /// <param name="paymentId">The payment ID</param>
-    /// <param name="requestHeaders">the Dictionary of optional request headers.</param>
     /// <returns>Task of Payment</returns>
     /// <exception cref="BlinkServiceException">Thrown when an exception occurs</exception>
     public async Task<Payment> GetPaymentAsync(Guid paymentId, Dictionary<string, string?>? requestHeaders = null)
     {
         return await _paymentsApi.GetPaymentAsync(paymentId, requestHeaders);
-    }
-
-    /// <summary>
-    /// Retrieves a successful payment by ID within the specified time
-    /// </summary>
-    /// <param name="paymentId">The payment ID</param>
-    /// <param name="maxWaitSeconds">The number of seconds to wait</param>
-    /// <returns>Payment</returns>
-    /// <exception cref="BlinkConsentFailureException">Thrown when a consent exception occurs</exception>
-    /// <exception cref="BlinkServiceException">Thrown when a Blink Debit service exception occurs</exception>
-    public Payment AwaitSuccessfulPayment(Guid paymentId, int maxWaitSeconds)
-    {
-        var retryPolicy = Policy<Payment>
-            .Handle<BlinkRetryableException>()
-            .WaitAndRetryAsync(maxWaitSeconds, retryAttempt => TimeSpan.FromSeconds(1),
-                (exception, timeSpan, retryCount, context) =>
-                {
-                    if (retryCount == maxWaitSeconds)
-                    {
-                        throw new BlinkPaymentTimeoutException();
-                    }
-                });
-
-        try
-        {
-            return retryPolicy.ExecuteAsync(async () =>
-            {
-                var payment = await GetPaymentAsync(paymentId);
-
-                var status = payment.Status;
-                _logger.LogDebug("The last status polled was: {status} \tfor Payment ID: {consentId}", status,
-                    paymentId);
-
-                if (Payment.StatusEnum.AcceptedSettlementCompleted == status)
-                {
-                    return payment;
-                }
-
-                throw new BlinkRetryableException();
-            }).Result;
-        }
-        catch (BlinkPaymentTimeoutException)
-        {
-            throw;
-        }
-        catch (BlinkServiceException)
-        {
-            throw;
-        }
-        catch (Exception e) when (e.InnerException is BlinkServiceException)
-        {
-            throw e.InnerException;
-        }
-        catch (Exception e)
-        {
-            if (e.InnerException != null)
-            {
-                throw new BlinkServiceException(e.InnerException.Message);
-            }
-
-            throw new BlinkServiceException(e.Message, e);
-        }
-    }
-
-    /// <summary>
-    /// Retrieves a successful payment by ID within the specified time
-    /// </summary>
-    /// <param name="paymentId">The payment ID</param>
-    /// <param name="maxWaitSeconds">The number of seconds to wait</param>
-    /// <returns>Payment</returns>
-    /// <exception cref="BlinkConsentFailureException">Thrown when a consent exception occurs</exception>
-    /// <exception cref="BlinkServiceException">Thrown when a Blink Debit service exception occurs</exception>
-    public Payment AwaitSuccessfulPaymentOrThrowException(Guid paymentId, int maxWaitSeconds)
-    {
-        try
-        {
-            return AwaitSuccessfulPaymentAsync(paymentId, maxWaitSeconds).Result;
-        }
-        catch (BlinkPaymentTimeoutException)
-        {
-            throw;
-        }
-        catch (BlinkServiceException)
-        {
-            throw;
-        }
-        catch (Exception e) when (e.InnerException is BlinkPaymentTimeoutException)
-        {
-            throw e.InnerException;
-        }
-        catch (Exception e) when (e.InnerException is BlinkServiceException)
-        {
-            throw e.InnerException;
-        }
-        catch (Exception e)
-        {
-            if (e.InnerException != null)
-            {
-                throw new BlinkServiceException(e.InnerException.Message);
-            }
-
-            throw new BlinkServiceException(e.Message, e);
-        }
     }
 
     /// <summary>
@@ -1336,14 +723,7 @@ public class BlinkDebitClient
     {
         var retryPolicy = Policy<Payment>
             .Handle<BlinkRetryableException>()
-            .WaitAndRetryAsync(maxWaitSeconds, retryAttempt => TimeSpan.FromSeconds(1),
-                (exception, timeSpan, retryCount, context) =>
-                {
-                    if (retryCount == maxWaitSeconds)
-                    {
-                        throw new BlinkPaymentTimeoutException();
-                    }
-                });
+            .WaitAndRetryAsync(maxWaitSeconds, retryAttempt => TimeSpan.FromSeconds(1));
 
         try
         {
@@ -1369,7 +749,7 @@ public class BlinkDebitClient
                 }
             });
         }
-        catch (BlinkConsentTimeoutException)
+        catch (BlinkPaymentTimeoutException)
         {
             throw;
         }
@@ -1377,39 +757,40 @@ public class BlinkDebitClient
         {
             throw;
         }
-        catch (Exception e) when (e.InnerException is BlinkServiceException)
+        catch (BlinkRetryableException)
+        {
+            // If we get here, all retries have been exhausted - this is a timeout
+            throw new BlinkPaymentTimeoutException("Payment timed out");
+        }
+        catch (Exception e) when (e.InnerException is BlinkServiceException &&
+                                  e.InnerException is not BlinkConsentTimeoutException &&
+                                  e.InnerException is not BlinkConsentRejectedException &&
+                                  e.InnerException is not BlinkPaymentTimeoutException &&
+                                  e.InnerException is not BlinkPaymentRejectedException)
         {
             throw e.InnerException;
         }
+        catch (Exception e) when (e.InnerException is BlinkRetryableException)
+        {
+            // If we get here, all retries have been exhausted - this is a timeout
+            throw new BlinkPaymentTimeoutException("Payment timed out");
+        }
         catch (Exception e)
         {
-            if (e.InnerException != null)
+            // Don't wrap timeout or rejection exceptions
+            if (e is BlinkConsentTimeoutException || e is BlinkConsentRejectedException || e is BlinkPaymentTimeoutException)
             {
-                throw new BlinkServiceException(e.InnerException.Message, e);
+                throw;
             }
 
-            throw new BlinkServiceException(e.Message, e);
-        }
-    }
-
-    /// <summary>
-    /// Creates a refund
-    /// </summary>
-    /// <param name="refundDetail">The refund detail parameters</param>
-    /// <param name="requestHeaders">the Dictionary of optional request headers.</param>
-    /// <returns>RefundResponse</returns>
-    /// <exception cref="BlinkServiceException">Thrown when an exception occurs</exception>
-    public RefundResponse CreateRefund(RefundDetail refundDetail, Dictionary<string, string?>? requestHeaders = null)
-    {
-        try
-        {
-            return CreateRefundAsync(refundDetail, requestHeaders).Result;
-        }
-        catch (Exception e)
-        {
-            if (e.InnerException is BlinkServiceException blinkServiceException)
+            if (e.InnerException != null)
             {
-                throw blinkServiceException;
+                // Don't wrap inner timeout or rejection exceptions
+                if (e.InnerException is BlinkConsentTimeoutException || e.InnerException is BlinkConsentRejectedException || e.InnerException is BlinkPaymentTimeoutException)
+                {
+                    throw e.InnerException;
+                }
+                throw new BlinkServiceException(e.InnerException.Message, e);
             }
 
             throw new BlinkServiceException(e.Message, e);
@@ -1427,30 +808,6 @@ public class BlinkDebitClient
         Dictionary<string, string?>? requestHeaders = null)
     {
         return await _refundsApi.CreateRefundAsync(requestHeaders, refundDetail);
-    }
-
-    /// <summary>
-    /// Retrieves an existing refund by ID
-    /// </summary>
-    /// <param name="refundId">The refund ID</param>
-    /// <param name="requestHeaders">the Dictionary of optional request headers.</param>
-    /// <returns>Refund</returns>
-    /// <exception cref="BlinkServiceException">Thrown when an exception occurs</exception>
-    public Refund GetRefund(Guid refundId, Dictionary<string, string?>? requestHeaders = null)
-    {
-        try
-        {
-            return GetRefundAsync(refundId, requestHeaders).Result;
-        }
-        catch (Exception e)
-        {
-            if (e.InnerException is BlinkServiceException blinkServiceException)
-            {
-                throw blinkServiceException;
-            }
-
-            throw new BlinkServiceException(e.Message, e);
-        }
     }
 
     /// <summary>

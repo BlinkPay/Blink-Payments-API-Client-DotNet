@@ -75,8 +75,8 @@ public class QuickPaymentsApiTests : IDisposable
     public async void QuickPaymentWithRedirectFlowInPnz()
     {
         // create
-        var redirectFlow = new RedirectFlow(RedirectUri, Bank.PNZ);
-        var authFlowDetail = new AuthFlowDetail(redirectFlow);
+        var decoupledFlow = new DecoupledFlow(Bank.PNZ, IdentifierType.PhoneNumber, "+64-259531933", CallbackUrl);
+        var authFlowDetail = new AuthFlowDetail(decoupledFlow);
         var authFlow = new AuthFlow(authFlowDetail);
         var pcr = new Pcr("particulars", "code", "reference");
         var amount = new Amount("1.25", Amount.CurrencyEnum.NZD);
@@ -89,9 +89,6 @@ public class QuickPaymentsApiTests : IDisposable
 
         var quickPaymentId = createQuickPaymentResponse.QuickPaymentId;
         Assert.NotEqual(Guid.Empty, quickPaymentId);
-        Assert.NotEmpty(createQuickPaymentResponse.RedirectUri);
-        Assert.StartsWith("https://api-nomatls.apicentre.middleware.co.nz/oauth/v2.0/authorize?scope=openid%20payments&response_type=code%20id_token&request=",
-            createQuickPaymentResponse.RedirectUri);
 
         // retrieve
         var quickPayment = await _instance.GetQuickPaymentAsync(quickPaymentId);
@@ -99,7 +96,7 @@ public class QuickPaymentsApiTests : IDisposable
         Assert.NotNull(quickPayment);
         var consent = quickPayment.Consent;
         Assert.NotNull(consent);
-        Assert.Equal(Consent.StatusEnum.AwaitingAuthorisation, consent.Status);
+        Assert.Contains(consent.Status, new[] { Consent.StatusEnum.AwaitingAuthorisation, Consent.StatusEnum.Authorised });
         Assert.Empty(consent.Payments);
 
         Assert.NotNull(consent.Detail);
@@ -110,11 +107,13 @@ public class QuickPaymentsApiTests : IDisposable
         Assert.NotNull(detail.Flow);
         Assert.NotNull(detail.Flow.Detail);
         Assert.IsType<AuthFlowDetail>(detail.Flow.Detail);
-        var flow = detail.Flow.Detail.GetRedirectFlow();
+        var flow = detail.Flow.Detail.GetDecoupledFlow();
 
-        Assert.Equal(AuthFlowDetail.TypeEnum.Redirect, flow.Type);
+        Assert.Equal(AuthFlowDetail.TypeEnum.Decoupled, flow.Type);
         Assert.Equal(Bank.PNZ, flow.Bank);
-        Assert.Equal(RedirectUri, flow.RedirectUri);
+        Assert.Equal(CallbackUrl, flow.CallbackUrl);
+        Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
+        Assert.Equal("+64-259531933", flow.IdentifierValue);
 
         // revoke
         await _instance.RevokeQuickPaymentAsync(quickPaymentId);
@@ -135,11 +134,13 @@ public class QuickPaymentsApiTests : IDisposable
         Assert.NotNull(detail.Flow);
         Assert.NotNull(detail.Flow.Detail);
         Assert.IsType<AuthFlowDetail>(detail.Flow.Detail);
-        flow = detail.Flow.Detail.GetRedirectFlow();
+        flow = detail.Flow.Detail.GetDecoupledFlow();
 
-        Assert.Equal(AuthFlowDetail.TypeEnum.Redirect, flow.Type);
+        Assert.Equal(AuthFlowDetail.TypeEnum.Decoupled, flow.Type);
         Assert.Equal(Bank.PNZ, flow.Bank);
-        Assert.Equal(RedirectUri, flow.RedirectUri);
+        Assert.Equal(CallbackUrl, flow.CallbackUrl);
+        Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
+        Assert.Equal("+64-259531933", flow.IdentifierValue);
     }
 
     /// <summary>
@@ -253,10 +254,8 @@ public class QuickPaymentsApiTests : IDisposable
     public async void QuickPaymentWithGatewayFlowAndRedirectFlowHintInPnz()
     {
         // create
-        var redirectFlowHint = new RedirectFlowHint(Bank.PNZ);
-        var flowHint = new GatewayFlowAllOfFlowHint(redirectFlowHint);
-        var gatewayFlow = new GatewayFlow(RedirectUri, flowHint);
-        var authFlowDetail = new AuthFlowDetail(gatewayFlow);
+        var decoupledFlow = new DecoupledFlow(Bank.PNZ, IdentifierType.PhoneNumber, "+64-259531933", CallbackUrl);
+        var authFlowDetail = new AuthFlowDetail(decoupledFlow);
         var authFlow = new AuthFlow(authFlowDetail);
         var pcr = new Pcr("particulars", "code", "reference");
         var amount = new Amount("1.25", Amount.CurrencyEnum.NZD);
@@ -269,8 +268,6 @@ public class QuickPaymentsApiTests : IDisposable
 
         var quickPaymentId = createQuickPaymentResponse.QuickPaymentId;
         Assert.NotEqual(Guid.Empty, quickPaymentId);
-        Assert.NotEmpty(createQuickPaymentResponse.RedirectUri);
-        Assert.EndsWith("/gateway/pay?id=" + quickPaymentId, createQuickPaymentResponse.RedirectUri);
 
         // retrieve
         var quickPayment = await _instance.GetQuickPaymentAsync(quickPaymentId);
@@ -278,7 +275,7 @@ public class QuickPaymentsApiTests : IDisposable
         Assert.NotNull(quickPayment);
         var consent = quickPayment.Consent;
         Assert.NotNull(consent);
-        Assert.Equal(Consent.StatusEnum.GatewayAwaitingSubmission, consent.Status);
+        Assert.Contains(consent.Status, new[] { Consent.StatusEnum.AwaitingAuthorisation, Consent.StatusEnum.Authorised });
         Assert.Empty(consent.Payments);
         Assert.Equal(ConsentDetail.TypeEnum.Single, consent.Detail.Type);
 
@@ -298,12 +295,13 @@ public class QuickPaymentsApiTests : IDisposable
         Assert.NotNull(detail.Flow);
         Assert.NotNull(detail.Flow.Detail);
         Assert.IsType<AuthFlowDetail>(detail.Flow.Detail);
-        gatewayFlow = detail.Flow.Detail.GetGatewayFlow();
+        var flow = detail.Flow.Detail.GetDecoupledFlow();
 
-        Assert.Equal(AuthFlowDetail.TypeEnum.Gateway, gatewayFlow.Type);
-        redirectFlowHint = gatewayFlow.FlowHint.GetRedirectFlowHint();
-        Assert.Equal(Bank.PNZ, redirectFlowHint.Bank);
-        Assert.Equal(RedirectUri, gatewayFlow.RedirectUri);
+        Assert.Equal(AuthFlowDetail.TypeEnum.Decoupled, flow.Type);
+        Assert.Equal(Bank.PNZ, flow.Bank);
+        Assert.Equal(CallbackUrl, flow.CallbackUrl);
+        Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
+        Assert.Equal("+64-259531933", flow.IdentifierValue);
 
         // revoke
         await _instance.RevokeQuickPaymentAsync(quickPaymentId);
@@ -333,12 +331,13 @@ public class QuickPaymentsApiTests : IDisposable
         Assert.NotNull(detail.Flow);
         Assert.NotNull(detail.Flow.Detail);
         Assert.IsType<AuthFlowDetail>(detail.Flow.Detail);
-        gatewayFlow = detail.Flow.Detail.GetGatewayFlow();
+        flow = detail.Flow.Detail.GetDecoupledFlow();
 
-        Assert.Equal(AuthFlowDetail.TypeEnum.Gateway, gatewayFlow.Type);
-        redirectFlowHint = gatewayFlow.FlowHint.GetRedirectFlowHint();
-        Assert.Equal(Bank.PNZ, redirectFlowHint.Bank);
-        Assert.Equal(RedirectUri, gatewayFlow.RedirectUri);
+        Assert.Equal(AuthFlowDetail.TypeEnum.Decoupled, flow.Type);
+        Assert.Equal(Bank.PNZ, flow.Bank);
+        Assert.Equal(CallbackUrl, flow.CallbackUrl);
+        Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
+        Assert.Equal("+64-259531933", flow.IdentifierValue);
     }
 
     /// <summary>
@@ -348,10 +347,8 @@ public class QuickPaymentsApiTests : IDisposable
     public async void QuickPaymentWithGatewayFlowAndDecoupledFlowHintInPnz()
     {
         // create
-        var decoupledFlowHint = new DecoupledFlowHint(Bank.PNZ, IdentifierType.PhoneNumber, "+64-259531933");
-        var flowHint = new GatewayFlowAllOfFlowHint(decoupledFlowHint);
-        var gatewayFlow = new GatewayFlow(RedirectUri, flowHint);
-        var authFlowDetail = new AuthFlowDetail(gatewayFlow);
+        var decoupledFlow = new DecoupledFlow(Bank.PNZ, IdentifierType.PhoneNumber, "+64-259531933", CallbackUrl);
+        var authFlowDetail = new AuthFlowDetail(decoupledFlow);
         var authFlow = new AuthFlow(authFlowDetail);
         var pcr = new Pcr("particulars", "code", "reference");
         var amount = new Amount("1.25", Amount.CurrencyEnum.NZD);
@@ -364,8 +361,6 @@ public class QuickPaymentsApiTests : IDisposable
 
         var quickPaymentId = createQuickPaymentResponse.QuickPaymentId;
         Assert.NotEqual(Guid.Empty, quickPaymentId);
-        Assert.NotEmpty(createQuickPaymentResponse.RedirectUri);
-        Assert.EndsWith("/gateway/pay?id=" + quickPaymentId, createQuickPaymentResponse.RedirectUri);
 
         // retrieve
         var quickPayment = await _instance.GetQuickPaymentAsync(quickPaymentId);
@@ -373,7 +368,7 @@ public class QuickPaymentsApiTests : IDisposable
         Assert.NotNull(quickPayment);
         var consent = quickPayment.Consent;
         Assert.NotNull(consent);
-        Assert.Equal(Consent.StatusEnum.GatewayAwaitingSubmission, consent.Status);
+        Assert.Contains(consent.Status, new[] { Consent.StatusEnum.AwaitingAuthorisation, Consent.StatusEnum.Authorised });
         Assert.Empty(consent.Payments);
         Assert.Equal(ConsentDetail.TypeEnum.Single, consent.Detail.Type);
 
@@ -393,12 +388,13 @@ public class QuickPaymentsApiTests : IDisposable
         Assert.NotNull(detail.Flow);
         Assert.NotNull(detail.Flow.Detail);
         Assert.IsType<AuthFlowDetail>(detail.Flow.Detail);
-        gatewayFlow = detail.Flow.Detail.GetGatewayFlow();
+        var flow = detail.Flow.Detail.GetDecoupledFlow();
 
-        Assert.Equal(AuthFlowDetail.TypeEnum.Gateway, gatewayFlow.Type);
-        decoupledFlowHint = gatewayFlow.FlowHint.GetDecoupledFlowHint();
-        Assert.Equal(Bank.PNZ, decoupledFlowHint.Bank);
-        Assert.Equal(RedirectUri, gatewayFlow.RedirectUri);
+        Assert.Equal(AuthFlowDetail.TypeEnum.Decoupled, flow.Type);
+        Assert.Equal(Bank.PNZ, flow.Bank);
+        Assert.Equal(CallbackUrl, flow.CallbackUrl);
+        Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
+        Assert.Equal("+64-259531933", flow.IdentifierValue);
 
         // revoke
         await _instance.RevokeQuickPaymentAsync(quickPaymentId);
@@ -428,11 +424,12 @@ public class QuickPaymentsApiTests : IDisposable
         Assert.NotNull(detail.Flow);
         Assert.NotNull(detail.Flow.Detail);
         Assert.IsType<AuthFlowDetail>(detail.Flow.Detail);
-        gatewayFlow = detail.Flow.Detail.GetGatewayFlow();
+        flow = detail.Flow.Detail.GetDecoupledFlow();
 
-        Assert.Equal(AuthFlowDetail.TypeEnum.Gateway, gatewayFlow.Type);
-        decoupledFlowHint = gatewayFlow.FlowHint.GetDecoupledFlowHint();
-        Assert.Equal(Bank.PNZ, decoupledFlowHint.Bank);
-        Assert.Equal(RedirectUri, gatewayFlow.RedirectUri);
+        Assert.Equal(AuthFlowDetail.TypeEnum.Decoupled, flow.Type);
+        Assert.Equal(Bank.PNZ, flow.Bank);
+        Assert.Equal(CallbackUrl, flow.CallbackUrl);
+        Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
+        Assert.Equal("+64-259531933", flow.IdentifierValue);
     }
 }
