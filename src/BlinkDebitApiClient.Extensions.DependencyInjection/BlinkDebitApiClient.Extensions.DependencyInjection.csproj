@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>BlinkDebitApiClient.Extensions.DependencyInjection</AssemblyName>
+    <PackageId>BlinkDebitApiClient.Extensions.DependencyInjection</PackageId>
+    <Authors>Rey Vincent Babilonia (rey.babilonia@blinkpay.co.nz)</Authors>
+    <Company>BlinkPay</Company>
+    <AssemblyTitle>Blink Debit API Client Dependency Injection Extensions for .NET 8</AssemblyTitle>
+    <Description>Dependency Injection extensions for BlinkDebitApiClient to enable seamless integration with ASP.NET Core and other .NET applications using Microsoft.Extensions.DependencyInjection</Description>
+    <Copyright>Copyright (c) 2025 BlinkPay</Copyright>
+    <RootNamespace>BlinkDebitApiClient.Extensions.DependencyInjection</RootNamespace>
+    <Version>1.3.0-SNAPSHOT</Version>
+    <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\BlinkDebitApiClient.Extensions.DependencyInjection.xml</DocumentationFile>
+    <RepositoryUrl>https://github.com/BlinkPay/Blink-Debit-API-Client-DotNet.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <Nullable>enable</Nullable>
+    <PackageProjectUrl>https://github.com/BlinkPay/Blink-Debit-API-Client-DotNet</PackageProjectUrl>
+    <PackageIcon>bp.png</PackageIcon>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>blinkpay;payments;debit;api;client;dependency-injection;di;aspnetcore</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BlinkDebitApiClient\BlinkDebitApiClient.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\images\bp.png">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+      <Link>bp.png</Link>
+    </None>
+  </ItemGroup>
+
+</Project>

@@ -40,7 +40,7 @@ namespace BlinkDebitApiClient.Api.V1;
 /// <summary>
 /// The facade for accessing all client methods from one place.
 /// </summary>
-public class BlinkDebitClient
+public class BlinkDebitClient : IBlinkDebitClient
 {
     /// <summary>
     /// Shared Random instance for retry jitter to improve performance.
