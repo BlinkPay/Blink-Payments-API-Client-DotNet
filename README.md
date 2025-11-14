@@ -237,6 +237,62 @@ _logger.LogInformation("Payment Status: {}", (await client.GetPaymentAsync(payme
 // TODO inspect the payment result status
 ```
 
+## Polling and Timeout Behavior
+
+The SDK provides helper methods to wait for consent authorization and payment completion. Understanding the auto-revoke behavior is critical for proper implementation.
+
+### Auto-Revoke on Timeout
+
+| Method | Auto-Revokes on Timeout? | Reason |
+|--------|-------------------------|--------|
+| `AwaitSuccessfulQuickPaymentAsync` | ✅ **YES** | Quick payments combine consent + payment - should complete immediately or be cancelled |
+| `AwaitAuthorisedSingleConsentAsync` | ❌ **NO** | Single consents require separate payment step - no funds processed if abandoned |
+| `AwaitAuthorisedEnduringConsentAsync` | ✅ **YES** | Enduring consents grant ongoing access - clean up if abandoned for security |
+| `AwaitSuccessfulPaymentAsync` | ❌ N/A | Payments cannot be revoked once initiated |
+
+**Best Practices**:
+- Manually revoke single or enduring consents if you determine the customer has permanently abandoned the authorization flow (before timeout expires)
+- Enduring consents will auto-revoke on timeout, but earlier manual revocation improves security
+
+### Payment Settlement and Wash-up Process
+
+**CRITICAL**: Payments do NOT complete immediately after authorization. You MUST implement a wash-up process to check final settlement status.
+
+**Settlement Statuses**:
+- `Pending` - Payment initiated, not yet settled
+- `AcceptedSettlementInProcess` - Settlement in progress
+- `AcceptedSettlementCompleted` - ✅ **ONLY THIS STATUS means payment is complete**
+- `Rejected` - Payment failed
+
+**Wash-up Implementation**:
+```csharp
+// Poll payment status until settlement completes
+public async Task<Payment> WaitForSettlement(Guid paymentId, int maxAttempts = 60)
+{
+    for (int i = 0; i < maxAttempts; i++)
+    {
+        var payment = await client.GetPaymentAsync(paymentId);
+
+        if (payment.Status == Payment.StatusEnum.AcceptedSettlementCompleted)
+        {
+            return payment; // SUCCESS - funds transferred
+        }
+
+        if (payment.Status == Payment.StatusEnum.Rejected)
+        {
+            throw new Exception("Payment rejected");
+        }
+
+        await Task.Delay(5000); // Wait 5 seconds between checks
+    }
+    throw new Exception("Payment settlement timeout");
+}
+```
+
+**Important**: Do NOT consider a payment complete unless status is `AcceptedSettlementCompleted`. Authorization alone does NOT guarantee funds transfer.
+
+---
+
 ## Individual API Call Examples
 ### Bank Metadata
 Supplies the supported banks and supported flows on your account.
@@ -433,7 +489,7 @@ var createConsentResponse = await client.CreateEnduringConsentAsync(request);
 ```
 #### Redirect Flow
 ```csharp
-var redirectFlow = new RedirectFlow(redirectUri, bank;
+var redirectFlow = new RedirectFlow(redirectUri, bank);
 var authFlowDetail = new AuthFlowDetail(redirectFlow);
 var authFlow = new AuthFlow(authFlowDetail);
 var maximumAmountPeriod = new Amount(total, Amount.CurrencyEnum.NZD);

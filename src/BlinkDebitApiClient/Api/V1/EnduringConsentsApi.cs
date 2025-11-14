@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 BlinkPay
+ * Copyright (c) 2025 BlinkPay
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -426,12 +426,16 @@ public class EnduringConsentsApi : IEnduringConsentsApi
                     requestHeaders.GetValueOrDefault(BlinkDebitConstant.CUSTOMER_USER_AGENT.GetValue())));
         }
 
-        if (requestHeaders.ContainsKey(BlinkDebitConstant.IDEMPOTENCY_KEY.GetValue()))
+        // Auto-generate idempotency-key if not provided
+        var idempotencyKey = requestHeaders.GetValueOrDefault(BlinkDebitConstant.IDEMPOTENCY_KEY.GetValue());
+        if (string.IsNullOrEmpty(idempotencyKey))
         {
-            localVarRequestOptions.HeaderParameters.Add(BlinkDebitConstant.IDEMPOTENCY_KEY.GetValue(),
-                ClientUtils.ParameterToString(
-                    requestHeaders.GetValueOrDefault(BlinkDebitConstant.IDEMPOTENCY_KEY.GetValue())));
+            idempotencyKey = Guid.NewGuid().ToString();
+            _logger.LogDebug("Auto-generated idempotency-key: {idempotencyKey}", idempotencyKey);
         }
+
+        localVarRequestOptions.HeaderParameters.Add(BlinkDebitConstant.IDEMPOTENCY_KEY.GetValue(),
+            ClientUtils.ParameterToString(idempotencyKey));
 
         if (enduringConsentRequest != null) localVarRequestOptions.Data = enduringConsentRequest;
 
@@ -549,12 +553,16 @@ public class EnduringConsentsApi : IEnduringConsentsApi
                     requestHeaders.GetValueOrDefault(BlinkDebitConstant.CUSTOMER_USER_AGENT.GetValue())));
         }
 
-        if (requestHeaders.ContainsKey(BlinkDebitConstant.IDEMPOTENCY_KEY.GetValue()))
+        // Auto-generate idempotency-key if not provided
+        var idempotencyKey = requestHeaders.GetValueOrDefault(BlinkDebitConstant.IDEMPOTENCY_KEY.GetValue());
+        if (string.IsNullOrEmpty(idempotencyKey))
         {
-            localVarRequestOptions.HeaderParameters.Add(BlinkDebitConstant.IDEMPOTENCY_KEY.GetValue(),
-                ClientUtils.ParameterToString(
-                    requestHeaders.GetValueOrDefault(BlinkDebitConstant.IDEMPOTENCY_KEY.GetValue())));
+            idempotencyKey = Guid.NewGuid().ToString();
+            _logger.LogDebug("Auto-generated idempotency-key: {idempotencyKey}", idempotencyKey);
         }
+
+        localVarRequestOptions.HeaderParameters.Add(BlinkDebitConstant.IDEMPOTENCY_KEY.GetValue(),
+            ClientUtils.ParameterToString(idempotencyKey));
 
         if (enduringConsentRequest != null) localVarRequestOptions.Data = enduringConsentRequest;
 

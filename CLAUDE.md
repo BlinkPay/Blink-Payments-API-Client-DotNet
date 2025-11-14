@@ -579,6 +579,52 @@ catch (BlinkServiceException e)
 
 ---
 
+## Idempotency-Key Handling
+
+For POST operations (create consent, payment, refund), the SDK **automatically generates a UUID** for the `idempotency-key` header if not provided by the caller.
+
+### Auto-generation
+
+The following operations automatically generate idempotency keys:
+- `CreateSingleConsentAsync` / `CreateSingleConsent`
+- `CreateEnduringConsentAsync` / `CreateEnduringConsent`
+- `CreateQuickPaymentAsync` / `CreateQuickPayment`
+- `CreatePaymentAsync` / `CreatePayment`
+- `CreateRefundAsync` / `CreateRefund`
+
+### Key Reuse Across Retries
+
+The same idempotency-key is **automatically reused across all retry attempts** by Polly's retry policy, ensuring idempotent behavior even during transient failures.
+
+**Implementation**: When a retry occurs, the same `RequestOptions` object (with the same headers) is reused, preserving the idempotency-key generated on the first attempt.
+
+### Custom Idempotency Key
+
+Callers can still provide their own idempotency-key via `requestHeaders`:
+
+```csharp
+var headers = new Dictionary<string, string?>
+{
+    [BlinkDebitConstant.IDEMPOTENCY_KEY.GetValue()] = "my-custom-key-12345"
+};
+await client.CreateSingleConsentAsync(headers, consentRequest);
+```
+
+### Why This Matters
+
+**Without idempotency-key**:
+- Network errors during retries could create duplicate consents/payments
+- Multiple identical requests could process multiple times
+
+**With auto-generated idempotency-key**:
+- ✅ Same key reused across retries = server recognizes duplicate request
+- ✅ Server returns the original result instead of creating duplicates
+- ✅ Safe to retry without manual key management
+
+**Best Practice**: Let the SDK auto-generate the key unless you have a specific business requirement for custom keys (e.g., tying operations to external transaction IDs).
+
+---
+
 ## Performance Considerations
 
 1. **Static Regex**: Always use `RegexOptions.Compiled` for reused patterns
@@ -586,6 +632,7 @@ catch (BlinkServiceException e)
 3. **Token refresh**: Cached with 5-minute buffer, minimal overhead
 4. **Retry policy**: 3 attempts max, exponential backoff prevents thundering herd
 5. **Async/await**: Use async methods (`*Async`) for all I/O operations
+6. **Idempotency-key**: Auto-generated UUID, minimal overhead, prevents duplicate operations
 
 ---
 
