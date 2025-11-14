@@ -398,19 +398,28 @@ public class SingleConsentsApi : ISingleConsentsApi
         localVarRequestOptions.HeaderParameters.Add("Accept", localVarAccept);
 
         requestHeaders ??= new Dictionary<string, string?>();
-        if (requestHeaders.ContainsKey(BlinkDebitConstant.REQUEST_ID.GetValue()))
+
+        // Auto-generate request-id if not provided
+        var requestId = requestHeaders.GetValueOrDefault(BlinkDebitConstant.REQUEST_ID.GetValue());
+        if (string.IsNullOrEmpty(requestId))
         {
-            localVarRequestOptions.HeaderParameters.Add(BlinkDebitConstant.REQUEST_ID.GetValue(),
-                ClientUtils.ParameterToString(
-                    requestHeaders.GetValueOrDefault(BlinkDebitConstant.REQUEST_ID.GetValue())));
+            requestId = Guid.NewGuid().ToString();
+            _logger.LogDebug("Auto-generated request-id: {requestId}", requestId);
         }
 
-        if (requestHeaders.ContainsKey(BlinkDebitConstant.CORRELATION_ID.GetValue()))
+        localVarRequestOptions.HeaderParameters.Add(BlinkDebitConstant.REQUEST_ID.GetValue(),
+            ClientUtils.ParameterToString(requestId));
+
+        // Auto-generate x-correlation-id if not provided
+        var correlationId = requestHeaders.GetValueOrDefault(BlinkDebitConstant.CORRELATION_ID.GetValue());
+        if (string.IsNullOrEmpty(correlationId))
         {
-            localVarRequestOptions.HeaderParameters.Add(BlinkDebitConstant.CORRELATION_ID.GetValue(),
-                ClientUtils.ParameterToString(
-                    requestHeaders.GetValueOrDefault(BlinkDebitConstant.CORRELATION_ID.GetValue())));
+            correlationId = Guid.NewGuid().ToString();
+            _logger.LogDebug("Auto-generated x-correlation-id: {correlationId}", correlationId);
         }
+
+        localVarRequestOptions.HeaderParameters.Add(BlinkDebitConstant.CORRELATION_ID.GetValue(),
+            ClientUtils.ParameterToString(correlationId));
 
         if (requestHeaders.ContainsKey(BlinkDebitConstant.CUSTOMER_IP.GetValue()))
         {
@@ -527,19 +536,28 @@ public class SingleConsentsApi : ISingleConsentsApi
         localVarRequestOptions.HeaderParameters.Add("Accept", localVarAccept);
 
         requestHeaders ??= new Dictionary<string, string?>();
-        if (requestHeaders.ContainsKey(BlinkDebitConstant.REQUEST_ID.GetValue()))
+
+        // Auto-generate request-id if not provided
+        var requestId = requestHeaders.GetValueOrDefault(BlinkDebitConstant.REQUEST_ID.GetValue());
+        if (string.IsNullOrEmpty(requestId))
         {
-            localVarRequestOptions.HeaderParameters.Add(BlinkDebitConstant.REQUEST_ID.GetValue(),
-                ClientUtils.ParameterToString(
-                    requestHeaders.GetValueOrDefault(BlinkDebitConstant.REQUEST_ID.GetValue())));
+            requestId = Guid.NewGuid().ToString();
+            _logger.LogDebug("Auto-generated request-id: {requestId}", requestId);
         }
 
-        if (requestHeaders.ContainsKey(BlinkDebitConstant.CORRELATION_ID.GetValue()))
+        localVarRequestOptions.HeaderParameters.Add(BlinkDebitConstant.REQUEST_ID.GetValue(),
+            ClientUtils.ParameterToString(requestId));
+
+        // Auto-generate x-correlation-id if not provided
+        var correlationId = requestHeaders.GetValueOrDefault(BlinkDebitConstant.CORRELATION_ID.GetValue());
+        if (string.IsNullOrEmpty(correlationId))
         {
-            localVarRequestOptions.HeaderParameters.Add(BlinkDebitConstant.CORRELATION_ID.GetValue(),
-                ClientUtils.ParameterToString(
-                    requestHeaders.GetValueOrDefault(BlinkDebitConstant.CORRELATION_ID.GetValue())));
+            correlationId = Guid.NewGuid().ToString();
+            _logger.LogDebug("Auto-generated x-correlation-id: {correlationId}", correlationId);
         }
+
+        localVarRequestOptions.HeaderParameters.Add(BlinkDebitConstant.CORRELATION_ID.GetValue(),
+            ClientUtils.ParameterToString(correlationId));
 
         if (requestHeaders.ContainsKey(BlinkDebitConstant.CUSTOMER_IP.GetValue()))
         {
@@ -648,19 +666,28 @@ public class SingleConsentsApi : ISingleConsentsApi
         localVarRequestOptions.HeaderParameters.Add("Accept", localVarAccept);
 
         requestHeaders ??= new Dictionary<string, string?>();
-        if (requestHeaders.ContainsKey(BlinkDebitConstant.REQUEST_ID.GetValue()))
+
+        // Auto-generate request-id if not provided
+        var requestId = requestHeaders.GetValueOrDefault(BlinkDebitConstant.REQUEST_ID.GetValue());
+        if (string.IsNullOrEmpty(requestId))
         {
-            localVarRequestOptions.HeaderParameters.Add(BlinkDebitConstant.REQUEST_ID.GetValue(),
-                ClientUtils.ParameterToString(
-                    requestHeaders.GetValueOrDefault(BlinkDebitConstant.REQUEST_ID.GetValue())));
+            requestId = Guid.NewGuid().ToString();
+            _logger.LogDebug("Auto-generated request-id: {requestId}", requestId);
         }
 
-        if (requestHeaders.ContainsKey(BlinkDebitConstant.CORRELATION_ID.GetValue()))
+        localVarRequestOptions.HeaderParameters.Add(BlinkDebitConstant.REQUEST_ID.GetValue(),
+            ClientUtils.ParameterToString(requestId));
+
+        // Auto-generate x-correlation-id if not provided
+        var correlationId = requestHeaders.GetValueOrDefault(BlinkDebitConstant.CORRELATION_ID.GetValue());
+        if (string.IsNullOrEmpty(correlationId))
         {
-            localVarRequestOptions.HeaderParameters.Add(BlinkDebitConstant.CORRELATION_ID.GetValue(),
-                ClientUtils.ParameterToString(
-                    requestHeaders.GetValueOrDefault(BlinkDebitConstant.CORRELATION_ID.GetValue())));
+            correlationId = Guid.NewGuid().ToString();
+            _logger.LogDebug("Auto-generated x-correlation-id: {correlationId}", correlationId);
         }
+
+        localVarRequestOptions.HeaderParameters.Add(BlinkDebitConstant.CORRELATION_ID.GetValue(),
+            ClientUtils.ParameterToString(correlationId));
 
         if (requestHeaders.ContainsKey(BlinkDebitConstant.CUSTOMER_IP.GetValue()))
         {
@@ -760,19 +787,28 @@ public class SingleConsentsApi : ISingleConsentsApi
         localVarRequestOptions.HeaderParameters.Add("Accept", localVarAccept);
 
         requestHeaders ??= new Dictionary<string, string?>();
-        if (requestHeaders.ContainsKey(BlinkDebitConstant.REQUEST_ID.GetValue()))
+
+        // Auto-generate request-id if not provided
+        var requestId = requestHeaders.GetValueOrDefault(BlinkDebitConstant.REQUEST_ID.GetValue());
+        if (string.IsNullOrEmpty(requestId))
         {
-            localVarRequestOptions.HeaderParameters.Add(BlinkDebitConstant.REQUEST_ID.GetValue(),
-                ClientUtils.ParameterToString(
-                    requestHeaders.GetValueOrDefault(BlinkDebitConstant.REQUEST_ID.GetValue())));
+            requestId = Guid.NewGuid().ToString();
+            _logger.LogDebug("Auto-generated request-id: {requestId}", requestId);
         }
 
-        if (requestHeaders.ContainsKey(BlinkDebitConstant.CORRELATION_ID.GetValue()))
+        localVarRequestOptions.HeaderParameters.Add(BlinkDebitConstant.REQUEST_ID.GetValue(),
+            ClientUtils.ParameterToString(requestId));
+
+        // Auto-generate x-correlation-id if not provided
+        var correlationId = requestHeaders.GetValueOrDefault(BlinkDebitConstant.CORRELATION_ID.GetValue());
+        if (string.IsNullOrEmpty(correlationId))
         {
-            localVarRequestOptions.HeaderParameters.Add(BlinkDebitConstant.CORRELATION_ID.GetValue(),
-                ClientUtils.ParameterToString(
-                    requestHeaders.GetValueOrDefault(BlinkDebitConstant.CORRELATION_ID.GetValue())));
+            correlationId = Guid.NewGuid().ToString();
+            _logger.LogDebug("Auto-generated x-correlation-id: {correlationId}", correlationId);
         }
+
+        localVarRequestOptions.HeaderParameters.Add(BlinkDebitConstant.CORRELATION_ID.GetValue(),
+            ClientUtils.ParameterToString(correlationId));
 
         if (requestHeaders.ContainsKey(BlinkDebitConstant.CUSTOMER_IP.GetValue()))
         {
@@ -866,19 +902,28 @@ public class SingleConsentsApi : ISingleConsentsApi
         localVarRequestOptions.HeaderParameters.Add("Accept", localVarAccept);
 
         requestHeaders ??= new Dictionary<string, string?>();
-        if (requestHeaders.ContainsKey(BlinkDebitConstant.REQUEST_ID.GetValue()))
+
+        // Auto-generate request-id if not provided
+        var requestId = requestHeaders.GetValueOrDefault(BlinkDebitConstant.REQUEST_ID.GetValue());
+        if (string.IsNullOrEmpty(requestId))
         {
-            localVarRequestOptions.HeaderParameters.Add(BlinkDebitConstant.REQUEST_ID.GetValue(),
-                ClientUtils.ParameterToString(
-                    requestHeaders.GetValueOrDefault(BlinkDebitConstant.REQUEST_ID.GetValue())));
+            requestId = Guid.NewGuid().ToString();
+            _logger.LogDebug("Auto-generated request-id: {requestId}", requestId);
         }
 
-        if (requestHeaders.ContainsKey(BlinkDebitConstant.CORRELATION_ID.GetValue()))
+        localVarRequestOptions.HeaderParameters.Add(BlinkDebitConstant.REQUEST_ID.GetValue(),
+            ClientUtils.ParameterToString(requestId));
+
+        // Auto-generate x-correlation-id if not provided
+        var correlationId = requestHeaders.GetValueOrDefault(BlinkDebitConstant.CORRELATION_ID.GetValue());
+        if (string.IsNullOrEmpty(correlationId))
         {
-            localVarRequestOptions.HeaderParameters.Add(BlinkDebitConstant.CORRELATION_ID.GetValue(),
-                ClientUtils.ParameterToString(
-                    requestHeaders.GetValueOrDefault(BlinkDebitConstant.CORRELATION_ID.GetValue())));
+            correlationId = Guid.NewGuid().ToString();
+            _logger.LogDebug("Auto-generated x-correlation-id: {correlationId}", correlationId);
         }
+
+        localVarRequestOptions.HeaderParameters.Add(BlinkDebitConstant.CORRELATION_ID.GetValue(),
+            ClientUtils.ParameterToString(correlationId));
 
         if (requestHeaders.ContainsKey(BlinkDebitConstant.CUSTOMER_IP.GetValue()))
         {
@@ -976,19 +1021,28 @@ public class SingleConsentsApi : ISingleConsentsApi
         localVarRequestOptions.HeaderParameters.Add("Accept", localVarAccept);
 
         requestHeaders ??= new Dictionary<string, string?>();
-        if (requestHeaders.ContainsKey(BlinkDebitConstant.REQUEST_ID.GetValue()))
+
+        // Auto-generate request-id if not provided
+        var requestId = requestHeaders.GetValueOrDefault(BlinkDebitConstant.REQUEST_ID.GetValue());
+        if (string.IsNullOrEmpty(requestId))
         {
-            localVarRequestOptions.HeaderParameters.Add(BlinkDebitConstant.REQUEST_ID.GetValue(),
-                ClientUtils.ParameterToString(
-                    requestHeaders.GetValueOrDefault(BlinkDebitConstant.REQUEST_ID.GetValue())));
+            requestId = Guid.NewGuid().ToString();
+            _logger.LogDebug("Auto-generated request-id: {requestId}", requestId);
         }
 
-        if (requestHeaders.ContainsKey(BlinkDebitConstant.CORRELATION_ID.GetValue()))
+        localVarRequestOptions.HeaderParameters.Add(BlinkDebitConstant.REQUEST_ID.GetValue(),
+            ClientUtils.ParameterToString(requestId));
+
+        // Auto-generate x-correlation-id if not provided
+        var correlationId = requestHeaders.GetValueOrDefault(BlinkDebitConstant.CORRELATION_ID.GetValue());
+        if (string.IsNullOrEmpty(correlationId))
         {
-            localVarRequestOptions.HeaderParameters.Add(BlinkDebitConstant.CORRELATION_ID.GetValue(),
-                ClientUtils.ParameterToString(
-                    requestHeaders.GetValueOrDefault(BlinkDebitConstant.CORRELATION_ID.GetValue())));
+            correlationId = Guid.NewGuid().ToString();
+            _logger.LogDebug("Auto-generated x-correlation-id: {correlationId}", correlationId);
         }
+
+        localVarRequestOptions.HeaderParameters.Add(BlinkDebitConstant.CORRELATION_ID.GetValue(),
+            ClientUtils.ParameterToString(correlationId));
 
         if (requestHeaders.ContainsKey(BlinkDebitConstant.CUSTOMER_IP.GetValue()))
         {

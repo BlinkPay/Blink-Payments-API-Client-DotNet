@@ -256,12 +256,12 @@ The SDK provides helper methods to wait for consent authorization and payment co
 
 ### Payment Settlement and Wash-up Process
 
-**CRITICAL**: Payments do NOT complete immediately after authorization. You MUST implement a wash-up process to check final settlement status.
+**Important**: Payment settlement is asynchronous. Payments transition through these states:
 
 **Settlement Statuses**:
 - `Pending` - Payment initiated, not yet settled
 - `AcceptedSettlementInProcess` - Settlement in progress
-- `AcceptedSettlementCompleted` - ✅ **ONLY THIS STATUS means payment is complete**
+- `AcceptedSettlementCompleted` - ✅ **ONLY THIS STATUS means money has been sent from the payer's bank**
 - `Rejected` - Payment failed
 
 **Wash-up Implementation**:
@@ -275,7 +275,7 @@ public async Task<Payment> WaitForSettlement(Guid paymentId, int maxAttempts = 6
 
         if (payment.Status == Payment.StatusEnum.AcceptedSettlementCompleted)
         {
-            return payment; // SUCCESS - funds transferred
+            return payment; // SUCCESS - funds sent from payer's bank
         }
 
         if (payment.Status == Payment.StatusEnum.Rejected)
@@ -289,7 +289,7 @@ public async Task<Payment> WaitForSettlement(Guid paymentId, int maxAttempts = 6
 }
 ```
 
-**Important**: Do NOT consider a payment complete unless status is `AcceptedSettlementCompleted`. Authorization alone does NOT guarantee funds transfer.
+**Only `AcceptedSettlementCompleted` confirms funds have been sent from the payer's bank.** In rare cases, payments may remain in `AcceptedSettlementInProcess` for extended periods.
 
 ---
 

@@ -626,6 +626,58 @@ await client.CreateSingleConsentAsync(headers, consentRequest);
 
 ---
 
+## Request ID and Correlation ID Handling
+
+The SDK **automatically generates UUIDs** for both `request-id` and `x-correlation-id` headers if not provided by the caller. This ensures consistent distributed tracing across all API operations.
+
+### Auto-generation
+
+**All API operations** automatically generate these headers:
+- `request-id`: Uniquely identifies a single API request
+- `x-correlation-id`: Groups related requests together (e.g., create consent → create payment)
+
+### Header Reuse Across Retries
+
+Both `request-id` and `x-correlation-id` are **automatically reused across all retry attempts** by Polly's retry policy, ensuring:
+- ✅ The same request-id is preserved across retries
+- ✅ The same correlation-id links all retry attempts
+- ✅ Complete traceability in logs and monitoring systems
+
+**Implementation**: When a retry occurs, the same `RequestOptions` object (with the same headers) is reused, preserving both IDs generated on the first attempt.
+
+### Custom Request/Correlation IDs
+
+Callers can provide their own IDs via `requestHeaders`:
+
+```csharp
+var headers = new Dictionary<string, string?>
+{
+    [BlinkDebitConstant.REQUEST_ID.GetValue()] = "my-request-id-12345",
+    [BlinkDebitConstant.CORRELATION_ID.GetValue()] = "my-correlation-id-67890"
+};
+await client.CreateSingleConsentAsync(consentRequest, headers);
+```
+
+### Why This Matters
+
+**For Distributed Tracing**:
+- ✅ Every request has a unique request-id for debugging
+- ✅ Related operations share the same correlation-id
+- ✅ Retries preserve IDs, showing they're the same logical operation
+- ✅ Logs include correlation-id in scope for easy filtering
+
+**For Support**:
+- ✅ Correlation IDs are included in HTTP 502 error responses
+- ✅ Provide correlation-id to BlinkPay support for troubleshooting
+- ✅ Request IDs help identify specific failed requests in logs
+
+**Best Practice**:
+- Let the SDK auto-generate IDs for most use cases
+- Provide custom correlation-id when linking operations across multiple API calls (e.g., create consent in one call, create payment in another)
+- Always log correlation IDs for support requests
+
+---
+
 ## Performance Considerations
 
 1. **Static Regex**: Always use `RegexOptions.Compiled` for reused patterns
@@ -633,7 +685,8 @@ await client.CreateSingleConsentAsync(headers, consentRequest);
 3. **Token refresh**: Cached with 5-minute buffer, minimal overhead
 4. **Retry policy**: 3 attempts max, exponential backoff prevents thundering herd
 5. **Async/await**: Use async methods (`*Async`) for all I/O operations
-6. **Idempotency-key**: Auto-generated UUID, minimal overhead, prevents duplicate operations
+6. **Auto-generated headers**: Request-ID, correlation-ID, and idempotency-key auto-generated as UUIDs with minimal overhead
+7. **Header reuse**: All headers preserved across retries for consistent tracing
 
 ---
 
