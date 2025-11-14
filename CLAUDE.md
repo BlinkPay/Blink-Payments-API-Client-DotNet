@@ -488,12 +488,13 @@ GatewayAwaitingSubmission → AwaitingAuthorisation → Authorised → Consumed
 
 ### 5. Idempotency
 
-**Always use unique idempotency keys** for payment creation:
+**Idempotency keys are auto-generated** for all POST operations (consents, payments, refunds). You can optionally provide your own:
 ```csharp
-RequestHeaders[BlinkDebitConstant.IDEMPOTENCY_KEY.GetValue()] = Guid.NewGuid().ToString();
+// Optional - SDK auto-generates if not provided
+RequestHeaders[BlinkDebitConstant.IDEMPOTENCY_KEY.GetValue()] = "my-custom-key";
 ```
 
-**Reusing keys**: Same key = same result (idempotent retry, not duplicate)
+**Key behavior**: Same key = same result (idempotent retry, not duplicate). Keys are automatically reused across retry attempts.
 
 ### 6. Correlation IDs for Support
 
