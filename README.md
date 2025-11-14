@@ -133,7 +133,111 @@ To use your appsettings file, you can pass environment variables from command li
 ```
 
 ## Client creation
-The client code can use .NET dependency injection.
+
+### ASP.NET Core Integration (Recommended)
+The recommended approach for ASP.NET Core applications is to use the `BlinkDebitApiClient.Extensions.DependencyInjection` NuGet package:
+
+```bash
+dotnet add package BlinkDebitApiClient.Extensions.DependencyInjection
+```
+
+#### Configuration-based registration (recommended)
+Configure via `appsettings.json` and register in `Program.cs`:
+
+**appsettings.json**:
+```json
+{
+  "BlinkPay": {
+    "DebitUrl": "https://sandbox.debit.blinkpay.co.nz",
+    "ClientId": "your-client-id",
+    "ClientSecret": "your-client-secret",
+    "TimeoutSeconds": 10,
+    "RetryEnabled": true
+  }
+}
+```
+
+**Program.cs**:
+```csharp
+using BlinkDebitApiClient.Extensions.DependencyInjection;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Register BlinkDebitClient from configuration
+builder.Services.AddBlinkDebitClient(builder.Configuration);
+
+var app = builder.Build();
+```
+
+#### Programmatic registration
+Alternatively, configure options directly in code:
+
+```csharp
+using BlinkDebitApiClient.Extensions.DependencyInjection;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddBlinkDebitClient(options =>
+{
+    options.DebitUrl = "https://sandbox.debit.blinkpay.co.nz";
+    options.ClientId = builder.Configuration["BlinkPay:ClientId"];
+    options.ClientSecret = builder.Configuration["BlinkPay:ClientSecret"];
+    options.TimeoutSeconds = 15;
+    options.RetryEnabled = true;
+});
+
+var app = builder.Build();
+```
+
+#### Consuming the client
+Inject `IBlinkDebitClient` into your controllers or services:
+
+```csharp
+public class PaymentController : ControllerBase
+{
+    private readonly IBlinkDebitClient _blinkClient;
+    private readonly ILogger<PaymentController> _logger;
+
+    public PaymentController(IBlinkDebitClient blinkClient, ILogger<PaymentController> logger)
+    {
+        _blinkClient = blinkClient;
+        _logger = logger;
+    }
+
+    [HttpPost("quick-payment")]
+    public async Task<IActionResult> CreateQuickPayment([FromBody] QuickPaymentDto dto)
+    {
+        try
+        {
+            var gatewayFlow = new GatewayFlow(dto.RedirectUri);
+            var authFlowDetail = new AuthFlowDetail(gatewayFlow);
+            var authFlow = new AuthFlow(authFlowDetail);
+            var pcr = new Pcr(dto.Particulars, dto.Code, dto.Reference);
+            var amount = new Amount(dto.Amount, Amount.CurrencyEnum.NZD);
+            var request = new QuickPaymentRequest(authFlow, pcr, amount);
+
+            var response = await _blinkClient.CreateQuickPaymentAsync(request);
+
+            return Ok(new { redirectUri = response.RedirectUri, quickPaymentId = response.QuickPaymentId });
+        }
+        catch (BlinkServiceException ex)
+        {
+            _logger.LogError(ex, "Failed to create quick payment");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+}
+```
+
+**Benefits**:
+- ✅ Automatic singleton lifetime management (follows HTTP client best practices)
+- ✅ Configuration validation on startup (fail fast)
+- ✅ Seamless integration with ASP.NET Core logging and configuration
+- ✅ Interface-based dependency injection (`IBlinkDebitClient`)
+- ✅ Supports both `appsettings.json` and programmatic configuration
+
+### Manual Dependency Injection (Legacy)
+The client code can use .NET dependency injection manually:
 ```csharp
 // configure dependency injection
 var serviceCollection = new ServiceCollection();
@@ -168,6 +272,7 @@ serviceProvider = serviceCollection.BuildServiceProvider();
 var client = serviceProvider.GetService<BlinkDebitClient>();
 ```
 
+### Direct Instantiation
 Another way is to supply the required values during object creation:
 ```csharp
 // configure logger

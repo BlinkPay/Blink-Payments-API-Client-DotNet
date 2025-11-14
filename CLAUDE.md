@@ -359,6 +359,242 @@ Retry 3: 8s + random(0-1000ms)
 
 ---
 
+## ASP.NET Core Integration
+
+The SDK provides a dedicated NuGet package `BlinkDebitApiClient.Extensions.DependencyInjection` for seamless ASP.NET Core integration using Microsoft's dependency injection container.
+
+### Package Structure
+
+```
+BlinkDebitApiClient.Extensions.DependencyInjection/
+  ├── ServiceCollectionExtensions.cs   # Extension methods for IServiceCollection
+  ├── BlinkDebitClientOptions.cs       # Configuration options class
+  └── README.md                         # Package-specific documentation
+```
+
+### Registration Methods
+
+**Two overloads** of `AddBlinkDebitClient()` are provided:
+
+#### 1. Configuration Binding (Recommended for ASP.NET Core)
+
+Binds from `IConfiguration` (typically `appsettings.json`):
+
+```csharp
+// Program.cs
+using BlinkDebitApiClient.Extensions.DependencyInjection;
+
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddBlinkDebitClient(builder.Configuration);
+// Uses "BlinkPay" section by default
+
+// Or specify custom section name:
+builder.Services.AddBlinkDebitClient(builder.Configuration, "CustomSection");
+```
+
+**appsettings.json**:
+```json
+{
+  "BlinkPay": {
+    "DebitUrl": "https://sandbox.debit.blinkpay.co.nz",
+    "ClientId": "your-client-id",
+    "ClientSecret": "your-client-secret",
+    "TimeoutSeconds": 10,
+    "RetryEnabled": true
+  }
+}
+```
+
+#### 2. Programmatic Configuration
+
+Configure via Action delegate:
+
+```csharp
+builder.Services.AddBlinkDebitClient(options =>
+{
+    options.DebitUrl = "https://sandbox.debit.blinkpay.co.nz";
+    options.ClientId = builder.Configuration["BlinkPay:ClientId"];
+    options.ClientSecret = builder.Configuration["BlinkPay:ClientSecret"];
+    options.TimeoutSeconds = 15;
+    options.RetryEnabled = true;
+});
+```
+
+### BlinkDebitClientOptions
+
+**Properties**:
+- `DebitUrl` (required): Base URL for Blink Debit API
+- `ClientId` (required): OAuth2 client ID
+- `ClientSecret` (required): OAuth2 client secret
+- `TimeoutSeconds` (optional, default: 10): Request timeout in seconds
+- `RetryEnabled` (optional, default: true): Enable/disable retry policy
+
+**Validation**: Options are validated on service resolution (fail-fast). Missing required fields throw `InvalidOperationException` with helpful error messages.
+
+### Interface-Based Injection
+
+The DI extension registers `IBlinkDebitClient` as a singleton:
+
+```csharp
+public class PaymentController : ControllerBase
+{
+    private readonly IBlinkDebitClient _blinkClient;
+    private readonly ILogger<PaymentController> _logger;
+
+    public PaymentController(IBlinkDebitClient blinkClient, ILogger<PaymentController> logger)
+    {
+        _blinkClient = blinkClient;
+        _logger = logger;
+    }
+
+    [HttpPost("quick-payment")]
+    public async Task<IActionResult> CreateQuickPayment([FromBody] QuickPaymentDto dto)
+    {
+        var gatewayFlow = new GatewayFlow(dto.RedirectUri);
+        var authFlowDetail = new AuthFlowDetail(gatewayFlow);
+        var authFlow = new AuthFlow(authFlowDetail);
+        var pcr = new Pcr(dto.Particulars, dto.Code, dto.Reference);
+        var amount = new Amount(dto.Amount, Amount.CurrencyEnum.NZD);
+        var request = new QuickPaymentRequest(authFlow, pcr, amount);
+
+        try
+        {
+            var response = await _blinkClient.CreateQuickPaymentAsync(request);
+            return Ok(new { redirectUri = response.RedirectUri, quickPaymentId = response.QuickPaymentId });
+        }
+        catch (BlinkServiceException ex)
+        {
+            _logger.LogError(ex, "Failed to create quick payment");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+}
+```
+
+### Key Implementation Details
+
+**Location**: `src/BlinkDebitApiClient.Extensions.DependencyInjection/ServiceCollectionExtensions.cs`
+
+```csharp
+services.AddSingleton<IBlinkDebitClient>(sp =>
+{
+    var options = sp.GetRequiredService<IOptions<BlinkDebitClientOptions>>().Value;
+    var logger = sp.GetRequiredService<ILogger<BlinkDebitClient>>();
+
+    // Validate options (throws InvalidOperationException if invalid)
+    options.Validate();
+
+    // Create BlinkDebitClient with validated options
+    return new BlinkDebitClient(
+        logger,
+        options.DebitUrl + "/payments/v1",
+        options.ClientId,
+        options.ClientSecret
+    );
+});
+```
+
+**Key Points**:
+- **Singleton lifetime**: Follows HTTP client best practices (connection pooling)
+- **Logger injection**: Uses ASP.NET Core's logging infrastructure
+- **Options pattern**: Integrates with `IOptions<T>` for configuration
+- **Validation**: Required fields validated on service resolution (fail-fast)
+- **URL construction**: `/payments/v1` appended automatically to `DebitUrl`
+
+### Security Best Practices
+
+**Never hardcode credentials in appsettings.json**. Use one of these approaches:
+
+#### 1. User Secrets (Development)
+```bash
+dotnet user-secrets init
+dotnet user-secrets set "BlinkPay:ClientId" "your-client-id"
+dotnet user-secrets set "BlinkPay:ClientSecret" "your-client-secret"
+```
+
+#### 2. Environment Variables (Production)
+```bash
+export BlinkPay__ClientId="your-client-id"
+export BlinkPay__ClientSecret="your-client-secret"
+# Note: __ (double underscore) for nested config
+```
+
+#### 3. Azure Key Vault / AWS Secrets Manager
+```csharp
+builder.Configuration.AddAzureKeyVault(...);
+// Secrets injected into configuration
+```
+
+### Testing with DI
+
+**Location**: `src/BlinkDebitApiClient.Extensions.DependencyInjection.Test/ServiceCollectionExtensionsTests.cs`
+
+```csharp
+[Fact]
+public void AddBlinkDebitClient_WithConfiguration_RegistersClient()
+{
+    // Arrange
+    var configDictionary = new Dictionary<string, string?>
+    {
+        ["BlinkPay:DebitUrl"] = "https://sandbox.debit.blinkpay.co.nz",
+        ["BlinkPay:ClientId"] = "test-client-id",
+        ["BlinkPay:ClientSecret"] = "test-client-secret"
+    };
+
+    var configuration = new ConfigurationBuilder()
+        .AddInMemoryCollection(configDictionary)
+        .Build();
+
+    var services = new ServiceCollection();
+    services.AddLogging(builder => builder.AddConsole());
+
+    // Act
+    services.AddBlinkDebitClient(configuration);
+    var serviceProvider = services.BuildServiceProvider();
+
+    // Assert
+    var client = serviceProvider.GetService<IBlinkDebitClient>();
+    Assert.NotNull(client);
+    Assert.IsAssignableFrom<BlinkDebitClient>(client);
+}
+```
+
+**Test Coverage**:
+- ✅ Registration with Action configuration
+- ✅ Registration with IConfiguration binding
+- ✅ Custom section name support
+- ✅ Singleton lifetime verification
+- ✅ Null argument validation
+- ✅ Missing required options validation (DebitUrl, ClientId, ClientSecret)
+
+### Migration Guide
+
+**From manual DI** → **To extension package**:
+
+**Before**:
+```csharp
+services.Configure<BlinkPayProperties>(config.GetSection("BlinkPay"));
+services.AddSingleton(resolver => resolver.GetRequiredService<IOptions<BlinkPayProperties>>().Value);
+services.AddLogging(builder => builder.AddConsole().AddDebug());
+var serviceProvider = services.BuildServiceProvider();
+var logger = serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("BlinkDebitClient");
+services.AddSingleton(logger);
+services.AddSingleton<BlinkDebitClient>();
+```
+
+**After**:
+```csharp
+services.AddBlinkDebitClient(builder.Configuration);
+```
+
+**Changes required**:
+1. Install `BlinkDebitApiClient.Extensions.DependencyInjection` package
+2. Replace manual registration with `AddBlinkDebitClient()`
+3. Change dependency from `BlinkDebitClient` to `IBlinkDebitClient`
+4. Update appsettings structure if needed (see BlinkDebitClientOptions)
+
+---
+
 ## Testing Patterns
 
 ### Test Structure
@@ -783,12 +1019,18 @@ export BLINKPAY_CLIENT_SECRET="your-client-secret"
 ### API Clients
 - `src/BlinkDebitApiClient/Client/ApiClient.cs`
 - `src/BlinkDebitApiClient/Api/V1/BlinkDebitClient.cs`
+- `src/BlinkDebitApiClient/Api/V1/IBlinkDebitClient.cs`
+
+### Dependency Injection Extensions
+- `src/BlinkDebitApiClient.Extensions.DependencyInjection/ServiceCollectionExtensions.cs`
+- `src/BlinkDebitApiClient.Extensions.DependencyInjection/BlinkDebitClientOptions.cs`
 
 ### Data Models (OpenAPI Generated)
 - `src/BlinkDebitApiClient/Model/V1/*.cs`
 
 ### Tests
 - `src/BlinkDebitApiClient.Test/Api/V1/*Tests.cs`
+- `src/BlinkDebitApiClient.Extensions.DependencyInjection.Test/ServiceCollectionExtensionsTests.cs`
 
 ---
 
