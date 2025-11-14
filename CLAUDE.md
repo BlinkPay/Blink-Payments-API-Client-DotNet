@@ -74,6 +74,50 @@ private bool IsTokenExpired(string token)
 - Always add expiry buffer to prevent edge-case failures
 - JWT token validation handles parse exceptions gracefully
 - OAuth refresh logic is automatic and transparent
+- **Thread-safe token refresh**: Uses `SemaphoreSlim` to prevent race conditions
+
+#### Thread-Safe Token Management
+
+The token refresh mechanism is **thread-safe** to prevent race conditions in high-concurrency scenarios:
+
+```csharp
+protected override async ValueTask<Parameter> GetAuthenticationParameter(string accessToken)
+{
+    // Fast path: if token is valid, return immediately without acquiring semaphore
+    if (!string.IsNullOrEmpty(Token) && !IsTokenExpired(Token))
+    {
+        return new HeaderParameter(KnownHeaders.Authorization, Token);
+    }
+
+    // Slow path: token needs refresh, acquire semaphore to ensure only one thread refreshes
+    await _tokenRefreshSemaphore.WaitAsync().ConfigureAwait(false);
+    try
+    {
+        // Double-check pattern: another thread might have refreshed while we were waiting
+        if (string.IsNullOrEmpty(Token) || IsTokenExpired(Token))
+        {
+            Token = await GetToken().ConfigureAwait(false);
+        }
+
+        return new HeaderParameter(KnownHeaders.Authorization, Token);
+    }
+    finally
+    {
+        _tokenRefreshSemaphore.Release();
+    }
+}
+```
+
+**Thread-Safety Features**:
+- **Fast path optimization**: Valid tokens bypass semaphore for maximum performance
+- **SemaphoreSlim(1,1)**: Only one thread can refresh token at a time
+- **Double-check locking**: Prevents duplicate OAuth requests if token was refreshed while waiting
+- **Prevents race conditions**: Multiple concurrent requests won't trigger multiple token refreshes
+- **Production-safe**: Eliminates authentication failures from corrupted token writes
+
+**Why This Matters**:
+- ❌ **Without thread safety**: 100 concurrent requests → 100 OAuth token requests (rate limiting, server load)
+- ✅ **With thread safety**: 100 concurrent requests → 1 OAuth token request (all others wait and reuse)
 
 ---
 

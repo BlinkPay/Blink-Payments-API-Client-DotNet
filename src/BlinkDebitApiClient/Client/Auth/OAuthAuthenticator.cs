@@ -22,6 +22,7 @@
 
 using System;
 using System.IdentityModel.Tokens.Jwt;
+using System.Threading;
 using System.Threading.Tasks;
 using BlinkDebitApiClient.Config;
 using BlinkDebitApiClient.Enums;
@@ -34,7 +35,7 @@ namespace BlinkDebitApiClient.Client.Auth;
 /// <summary>
 /// An authenticator for OAuth2 authentication flows
 /// </summary>
-public class OAuthAuthenticator : AuthenticatorBase
+public class OAuthAuthenticator : AuthenticatorBase, IDisposable
 {
     private readonly string _tokenUrl;
     private readonly string _clientId;
@@ -42,6 +43,8 @@ public class OAuthAuthenticator : AuthenticatorBase
     private readonly string _grantType;
     private readonly JsonSerializerSettings _serializerSettings;
     private readonly IReadableConfiguration _configuration;
+    private readonly SemaphoreSlim _tokenRefreshSemaphore = new SemaphoreSlim(1, 1);
+    private bool _disposed;
 
     /// <summary>
     /// Initialize the OAuth2 Authenticator
@@ -65,18 +68,34 @@ public class OAuthAuthenticator : AuthenticatorBase
 
     /// <summary>
     /// Creates an authentication parameter from an access token.
+    /// Thread-safe implementation using SemaphoreSlim to prevent concurrent token refresh attempts.
     /// </summary>
     /// <param name="accessToken">Access token to create a parameter from.</param>
     /// <returns>An authentication parameter.</returns>
     protected override async ValueTask<Parameter> GetAuthenticationParameter(string accessToken)
     {
-        // Check if token needs to be obtained or refreshed
-        if (string.IsNullOrEmpty(Token) || IsTokenExpired(Token))
+        // Fast path: if token is valid, return immediately without acquiring semaphore
+        if (!string.IsNullOrEmpty(Token) && !IsTokenExpired(Token))
         {
-            Token = await GetToken().ConfigureAwait(false);
+            return new HeaderParameter(KnownHeaders.Authorization, Token);
         }
 
-        return new HeaderParameter(KnownHeaders.Authorization, Token);
+        // Slow path: token needs refresh, acquire semaphore to ensure only one thread refreshes
+        await _tokenRefreshSemaphore.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            // Double-check pattern: another thread might have refreshed while we were waiting
+            if (string.IsNullOrEmpty(Token) || IsTokenExpired(Token))
+            {
+                Token = await GetToken().ConfigureAwait(false);
+            }
+
+            return new HeaderParameter(KnownHeaders.Authorization, Token);
+        }
+        finally
+        {
+            _tokenRefreshSemaphore.Release();
+        }
     }
 
     /// <summary>
@@ -116,5 +135,33 @@ public class OAuthAuthenticator : AuthenticatorBase
             .AddParameter("client_secret", _clientSecret);
         var response = await client.PostAsync<TokenResponse>(request).ConfigureAwait(false);
         return $"{response.TokenType} {response.AccessToken}";
+    }
+
+    /// <summary>
+    /// Disposes the resources used by the OAuth authenticator.
+    /// </summary>
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Disposes the resources used by the OAuth authenticator.
+    /// </summary>
+    /// <param name="disposing">True if disposing managed resources.</param>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        if (disposing)
+        {
+            _tokenRefreshSemaphore?.Dispose();
+        }
+
+        _disposed = true;
     }
 }
