@@ -133,7 +133,111 @@ To use your appsettings file, you can pass environment variables from command li
 ```
 
 ## Client creation
-The client code can use .NET dependency injection.
+
+### ASP.NET Core Integration (Recommended)
+The recommended approach for ASP.NET Core applications is to use the `BlinkDebitApiClient.Extensions.DependencyInjection` NuGet package:
+
+```bash
+dotnet add package BlinkDebitApiClient.Extensions.DependencyInjection
+```
+
+#### Configuration-based registration (recommended)
+Configure via `appsettings.json` and register in `Program.cs`:
+
+**appsettings.json**:
+```json
+{
+  "BlinkPay": {
+    "DebitUrl": "https://sandbox.debit.blinkpay.co.nz",
+    "ClientId": "your-client-id",
+    "ClientSecret": "your-client-secret",
+    "TimeoutSeconds": 10,
+    "RetryEnabled": true
+  }
+}
+```
+
+**Program.cs**:
+```csharp
+using BlinkDebitApiClient.Extensions.DependencyInjection;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Register BlinkDebitClient from configuration
+builder.Services.AddBlinkDebitClient(builder.Configuration);
+
+var app = builder.Build();
+```
+
+#### Programmatic registration
+Alternatively, configure options directly in code:
+
+```csharp
+using BlinkDebitApiClient.Extensions.DependencyInjection;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddBlinkDebitClient(options =>
+{
+    options.DebitUrl = "https://sandbox.debit.blinkpay.co.nz";
+    options.ClientId = builder.Configuration["BlinkPay:ClientId"];
+    options.ClientSecret = builder.Configuration["BlinkPay:ClientSecret"];
+    options.TimeoutSeconds = 15;
+    options.RetryEnabled = true;
+});
+
+var app = builder.Build();
+```
+
+#### Consuming the client
+Inject `IBlinkDebitClient` into your controllers or services:
+
+```csharp
+public class PaymentController : ControllerBase
+{
+    private readonly IBlinkDebitClient _blinkClient;
+    private readonly ILogger<PaymentController> _logger;
+
+    public PaymentController(IBlinkDebitClient blinkClient, ILogger<PaymentController> logger)
+    {
+        _blinkClient = blinkClient;
+        _logger = logger;
+    }
+
+    [HttpPost("quick-payment")]
+    public async Task<IActionResult> CreateQuickPayment([FromBody] QuickPaymentDto dto)
+    {
+        try
+        {
+            var gatewayFlow = new GatewayFlow(dto.RedirectUri);
+            var authFlowDetail = new AuthFlowDetail(gatewayFlow);
+            var authFlow = new AuthFlow(authFlowDetail);
+            var pcr = new Pcr(dto.Particulars, dto.Code, dto.Reference);
+            var amount = new Amount(dto.Amount, Amount.CurrencyEnum.NZD);
+            var request = new QuickPaymentRequest(authFlow, pcr, amount);
+
+            var response = await _blinkClient.CreateQuickPaymentAsync(request);
+
+            return Ok(new { redirectUri = response.RedirectUri, quickPaymentId = response.QuickPaymentId });
+        }
+        catch (BlinkServiceException ex)
+        {
+            _logger.LogError(ex, "Failed to create quick payment");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+}
+```
+
+**Benefits**:
+- ✅ Automatic singleton lifetime management (follows HTTP client best practices)
+- ✅ Configuration validation on startup (fail fast)
+- ✅ Seamless integration with ASP.NET Core logging and configuration
+- ✅ Interface-based dependency injection (`IBlinkDebitClient`)
+- ✅ Supports both `appsettings.json` and programmatic configuration
+
+### Manual Dependency Injection (Legacy)
+The client code can use .NET dependency injection manually:
 ```csharp
 // configure dependency injection
 var serviceCollection = new ServiceCollection();
@@ -168,6 +272,7 @@ serviceProvider = serviceCollection.BuildServiceProvider();
 var client = serviceProvider.GetService<BlinkDebitClient>();
 ```
 
+### Direct Instantiation
 Another way is to supply the required values during object creation:
 ```csharp
 // configure logger
@@ -236,6 +341,62 @@ var paymentResponse = await client.CreatePaymentAsync(paymentRequest);
 _logger.LogInformation("Payment Status: {}", (await client.GetPaymentAsync(paymentResponse.PaymentId)).Status);
 // TODO inspect the payment result status
 ```
+
+## Polling and Timeout Behavior
+
+The SDK provides helper methods to wait for consent authorization and payment completion. Understanding the auto-revoke behavior is critical for proper implementation.
+
+### Auto-Revoke on Timeout
+
+| Method | Auto-Revokes on Timeout? | Reason |
+|--------|-------------------------|--------|
+| `AwaitSuccessfulQuickPaymentAsync` | ✅ **YES** | Quick payments combine consent + payment - should complete immediately or be cancelled |
+| `AwaitAuthorisedSingleConsentAsync` | ❌ **NO** | Single consents require separate payment step - no funds processed if abandoned |
+| `AwaitAuthorisedEnduringConsentAsync` | ✅ **YES** | Enduring consents grant ongoing access - clean up if abandoned for security |
+| `AwaitSuccessfulPaymentAsync` | ❌ N/A | Payments cannot be revoked once initiated |
+
+**Best Practices**:
+- Manually revoke single or enduring consents if you determine the customer has permanently abandoned the authorization flow (before timeout expires)
+- Enduring consents will auto-revoke on timeout, but earlier manual revocation improves security
+
+### Payment Settlement and Wash-up Process
+
+**Important**: Payment settlement is asynchronous. Payments transition through these states:
+
+**Settlement Statuses**:
+- `Pending` - Payment initiated, not yet settled
+- `AcceptedSettlementInProcess` - Settlement in progress
+- `AcceptedSettlementCompleted` - ✅ **ONLY THIS STATUS means money has been sent from the payer's bank**
+- `Rejected` - Payment failed
+
+**Wash-up Implementation**:
+```csharp
+// Poll payment status until settlement completes
+public async Task<Payment> WaitForSettlement(Guid paymentId, int maxAttempts = 60)
+{
+    for (int i = 0; i < maxAttempts; i++)
+    {
+        var payment = await client.GetPaymentAsync(paymentId);
+
+        if (payment.Status == Payment.StatusEnum.AcceptedSettlementCompleted)
+        {
+            return payment; // SUCCESS - funds sent from payer's bank
+        }
+
+        if (payment.Status == Payment.StatusEnum.Rejected)
+        {
+            throw new Exception("Payment rejected");
+        }
+
+        await Task.Delay(5000); // Wait 5 seconds between checks
+    }
+    throw new Exception("Payment settlement timeout");
+}
+```
+
+**Only `AcceptedSettlementCompleted` confirms funds have been sent from the payer's bank.** In rare cases, payments may remain in `AcceptedSettlementInProcess` for extended periods.
+
+---
 
 ## Individual API Call Examples
 ### Bank Metadata
@@ -433,7 +594,7 @@ var createConsentResponse = await client.CreateEnduringConsentAsync(request);
 ```
 #### Redirect Flow
 ```csharp
-var redirectFlow = new RedirectFlow(redirectUri, bank;
+var redirectFlow = new RedirectFlow(redirectUri, bank);
 var authFlowDetail = new AuthFlowDetail(redirectFlow);
 var authFlow = new AuthFlow(authFlowDetail);
 var maximumAmountPeriod = new Amount(total, Amount.CurrencyEnum.NZD);

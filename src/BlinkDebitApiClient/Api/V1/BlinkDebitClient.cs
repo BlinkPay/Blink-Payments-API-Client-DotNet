@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 BlinkPay
+ * Copyright (c) 2025 BlinkPay
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,7 +40,7 @@ namespace BlinkDebitApiClient.Api.V1;
 /// <summary>
 /// The facade for accessing all client methods from one place.
 /// </summary>
-public class BlinkDebitClient
+public class BlinkDebitClient : IBlinkDebitClient
 {
     /// <summary>
     /// Shared Random instance for retry jitter to improve performance.

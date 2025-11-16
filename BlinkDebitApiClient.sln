@@ -1,10 +1,16 @@
-Microsoft Visual Studio Solution File, Format Version 12.00
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
 VisualStudioVersion = 12.0.0.0
 MinimumVisualStudioVersion = 10.0.0.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlinkDebitApiClient", "src\BlinkDebitApiClient\BlinkDebitApiClient.csproj", "{8E0BE00C-CFC3-4D6F-9A25-D6D095F9101C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlinkDebitApiClient.Test", "src\BlinkDebitApiClient.Test\BlinkDebitApiClient.Test.csproj", "{19F1DEBC-DE5E-4517-8062-F000CD499087}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{4CD0C9C0-ED6A-48E6-B99A-2930AAD824C4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlinkDebitApiClient.Extensions.DependencyInjection", "src\BlinkDebitApiClient.Extensions.DependencyInjection\BlinkDebitApiClient.Extensions.DependencyInjection.csproj", "{010AB291-28D8-407E-B601-7E00E5D783AC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlinkDebitApiClient.Extensions.DependencyInjection.Test", "src\BlinkDebitApiClient.Extensions.DependencyInjection.Test\BlinkDebitApiClient.Extensions.DependencyInjection.Test.csproj", "{1EF53298-14A1-4705-8956-E3DD191AAB43}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -20,8 +26,20 @@ Global
 		{19F1DEBC-DE5E-4517-8062-F000CD499087}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{19F1DEBC-DE5E-4517-8062-F000CD499087}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{19F1DEBC-DE5E-4517-8062-F000CD499087}.Release|Any CPU.Build.0 = Release|Any CPU
+		{010AB291-28D8-407E-B601-7E00E5D783AC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{010AB291-28D8-407E-B601-7E00E5D783AC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{010AB291-28D8-407E-B601-7E00E5D783AC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{010AB291-28D8-407E-B601-7E00E5D783AC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1EF53298-14A1-4705-8956-E3DD191AAB43}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1EF53298-14A1-4705-8956-E3DD191AAB43}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1EF53298-14A1-4705-8956-E3DD191AAB43}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1EF53298-14A1-4705-8956-E3DD191AAB43}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{010AB291-28D8-407E-B601-7E00E5D783AC} = {4CD0C9C0-ED6A-48E6-B99A-2930AAD824C4}
+		{1EF53298-14A1-4705-8956-E3DD191AAB43} = {4CD0C9C0-ED6A-48E6-B99A-2930AAD824C4}
 	EndGlobalSection
 EndGlobal

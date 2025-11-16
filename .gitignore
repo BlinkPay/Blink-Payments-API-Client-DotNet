@@ -79,3 +79,5 @@ ClientBin/
 *.pfx
 *.publishsettings
 orleans.codegen.cs
+repomix.config.json
+repomix-output.txt

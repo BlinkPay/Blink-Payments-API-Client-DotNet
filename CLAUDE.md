@@ -74,6 +74,50 @@ private bool IsTokenExpired(string token)
 - Always add expiry buffer to prevent edge-case failures
 - JWT token validation handles parse exceptions gracefully
 - OAuth refresh logic is automatic and transparent
+- **Thread-safe token refresh**: Uses `SemaphoreSlim` to prevent race conditions
+
+#### Thread-Safe Token Management
+
+The token refresh mechanism is **thread-safe** to prevent race conditions in high-concurrency scenarios:
+
+```csharp
+protected override async ValueTask<Parameter> GetAuthenticationParameter(string accessToken)
+{
+    // Fast path: if token is valid, return immediately without acquiring semaphore
+    if (!string.IsNullOrEmpty(Token) && !IsTokenExpired(Token))
+    {
+        return new HeaderParameter(KnownHeaders.Authorization, Token);
+    }
+
+    // Slow path: token needs refresh, acquire semaphore to ensure only one thread refreshes
+    await _tokenRefreshSemaphore.WaitAsync().ConfigureAwait(false);
+    try
+    {
+        // Double-check pattern: another thread might have refreshed while we were waiting
+        if (string.IsNullOrEmpty(Token) || IsTokenExpired(Token))
+        {
+            Token = await GetToken().ConfigureAwait(false);
+        }
+
+        return new HeaderParameter(KnownHeaders.Authorization, Token);
+    }
+    finally
+    {
+        _tokenRefreshSemaphore.Release();
+    }
+}
+```
+
+**Thread-Safety Features**:
+- **Fast path optimization**: Valid tokens bypass semaphore for maximum performance
+- **SemaphoreSlim(1,1)**: Only one thread can refresh token at a time
+- **Double-check locking**: Prevents duplicate OAuth requests if token was refreshed while waiting
+- **Prevents race conditions**: Multiple concurrent requests won't trigger multiple token refreshes
+- **Production-safe**: Eliminates authentication failures from corrupted token writes
+
+**Why This Matters**:
+- ❌ **Without thread safety**: 100 concurrent requests → 100 OAuth token requests (rate limiting, server load)
+- ✅ **With thread safety**: 100 concurrent requests → 1 OAuth token request (all others wait and reuse)
 
 ---
 
@@ -315,6 +359,242 @@ Retry 3: 8s + random(0-1000ms)
 
 ---
 
+## ASP.NET Core Integration
+
+The SDK provides a dedicated NuGet package `BlinkDebitApiClient.Extensions.DependencyInjection` for seamless ASP.NET Core integration using Microsoft's dependency injection container.
+
+### Package Structure
+
+```
+BlinkDebitApiClient.Extensions.DependencyInjection/
+  ├── ServiceCollectionExtensions.cs   # Extension methods for IServiceCollection
+  ├── BlinkDebitClientOptions.cs       # Configuration options class
+  └── README.md                         # Package-specific documentation
+```
+
+### Registration Methods
+
+**Two overloads** of `AddBlinkDebitClient()` are provided:
+
+#### 1. Configuration Binding (Recommended for ASP.NET Core)
+
+Binds from `IConfiguration` (typically `appsettings.json`):
+
+```csharp
+// Program.cs
+using BlinkDebitApiClient.Extensions.DependencyInjection;
+
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddBlinkDebitClient(builder.Configuration);
+// Uses "BlinkPay" section by default
+
+// Or specify custom section name:
+builder.Services.AddBlinkDebitClient(builder.Configuration, "CustomSection");
+```
+
+**appsettings.json**:
+```json
+{
+  "BlinkPay": {
+    "DebitUrl": "https://sandbox.debit.blinkpay.co.nz",
+    "ClientId": "your-client-id",
+    "ClientSecret": "your-client-secret",
+    "TimeoutSeconds": 10,
+    "RetryEnabled": true
+  }
+}
+```
+
+#### 2. Programmatic Configuration
+
+Configure via Action delegate:
+
+```csharp
+builder.Services.AddBlinkDebitClient(options =>
+{
+    options.DebitUrl = "https://sandbox.debit.blinkpay.co.nz";
+    options.ClientId = builder.Configuration["BlinkPay:ClientId"];
+    options.ClientSecret = builder.Configuration["BlinkPay:ClientSecret"];
+    options.TimeoutSeconds = 15;
+    options.RetryEnabled = true;
+});
+```
+
+### BlinkDebitClientOptions
+
+**Properties**:
+- `DebitUrl` (required): Base URL for Blink Debit API
+- `ClientId` (required): OAuth2 client ID
+- `ClientSecret` (required): OAuth2 client secret
+- `TimeoutSeconds` (optional, default: 10): Request timeout in seconds
+- `RetryEnabled` (optional, default: true): Enable/disable retry policy
+
+**Validation**: Options are validated on service resolution (fail-fast). Missing required fields throw `InvalidOperationException` with helpful error messages.
+
+### Interface-Based Injection
+
+The DI extension registers `IBlinkDebitClient` as a singleton:
+
+```csharp
+public class PaymentController : ControllerBase
+{
+    private readonly IBlinkDebitClient _blinkClient;
+    private readonly ILogger<PaymentController> _logger;
+
+    public PaymentController(IBlinkDebitClient blinkClient, ILogger<PaymentController> logger)
+    {
+        _blinkClient = blinkClient;
+        _logger = logger;
+    }
+
+    [HttpPost("quick-payment")]
+    public async Task<IActionResult> CreateQuickPayment([FromBody] QuickPaymentDto dto)
+    {
+        var gatewayFlow = new GatewayFlow(dto.RedirectUri);
+        var authFlowDetail = new AuthFlowDetail(gatewayFlow);
+        var authFlow = new AuthFlow(authFlowDetail);
+        var pcr = new Pcr(dto.Particulars, dto.Code, dto.Reference);
+        var amount = new Amount(dto.Amount, Amount.CurrencyEnum.NZD);
+        var request = new QuickPaymentRequest(authFlow, pcr, amount);
+
+        try
+        {
+            var response = await _blinkClient.CreateQuickPaymentAsync(request);
+            return Ok(new { redirectUri = response.RedirectUri, quickPaymentId = response.QuickPaymentId });
+        }
+        catch (BlinkServiceException ex)
+        {
+            _logger.LogError(ex, "Failed to create quick payment");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+}
+```
+
+### Key Implementation Details
+
+**Location**: `src/BlinkDebitApiClient.Extensions.DependencyInjection/ServiceCollectionExtensions.cs`
+
+```csharp
+services.AddSingleton<IBlinkDebitClient>(sp =>
+{
+    var options = sp.GetRequiredService<IOptions<BlinkDebitClientOptions>>().Value;
+    var logger = sp.GetRequiredService<ILogger<BlinkDebitClient>>();
+
+    // Validate options (throws InvalidOperationException if invalid)
+    options.Validate();
+
+    // Create BlinkDebitClient with validated options
+    return new BlinkDebitClient(
+        logger,
+        options.DebitUrl + "/payments/v1",
+        options.ClientId,
+        options.ClientSecret
+    );
+});
+```
+
+**Key Points**:
+- **Singleton lifetime**: Follows HTTP client best practices (connection pooling)
+- **Logger injection**: Uses ASP.NET Core's logging infrastructure
+- **Options pattern**: Integrates with `IOptions<T>` for configuration
+- **Validation**: Required fields validated on service resolution (fail-fast)
+- **URL construction**: `/payments/v1` appended automatically to `DebitUrl`
+
+### Security Best Practices
+
+**Never hardcode credentials in appsettings.json**. Use one of these approaches:
+
+#### 1. User Secrets (Development)
+```bash
+dotnet user-secrets init
+dotnet user-secrets set "BlinkPay:ClientId" "your-client-id"
+dotnet user-secrets set "BlinkPay:ClientSecret" "your-client-secret"
+```
+
+#### 2. Environment Variables (Production)
+```bash
+export BlinkPay__ClientId="your-client-id"
+export BlinkPay__ClientSecret="your-client-secret"
+# Note: __ (double underscore) for nested config
+```
+
+#### 3. Azure Key Vault / AWS Secrets Manager
+```csharp
+builder.Configuration.AddAzureKeyVault(...);
+// Secrets injected into configuration
+```
+
+### Testing with DI
+
+**Location**: `src/BlinkDebitApiClient.Extensions.DependencyInjection.Test/ServiceCollectionExtensionsTests.cs`
+
+```csharp
+[Fact]
+public void AddBlinkDebitClient_WithConfiguration_RegistersClient()
+{
+    // Arrange
+    var configDictionary = new Dictionary<string, string?>
+    {
+        ["BlinkPay:DebitUrl"] = "https://sandbox.debit.blinkpay.co.nz",
+        ["BlinkPay:ClientId"] = "test-client-id",
+        ["BlinkPay:ClientSecret"] = "test-client-secret"
+    };
+
+    var configuration = new ConfigurationBuilder()
+        .AddInMemoryCollection(configDictionary)
+        .Build();
+
+    var services = new ServiceCollection();
+    services.AddLogging(builder => builder.AddConsole());
+
+    // Act
+    services.AddBlinkDebitClient(configuration);
+    var serviceProvider = services.BuildServiceProvider();
+
+    // Assert
+    var client = serviceProvider.GetService<IBlinkDebitClient>();
+    Assert.NotNull(client);
+    Assert.IsAssignableFrom<BlinkDebitClient>(client);
+}
+```
+
+**Test Coverage**:
+- ✅ Registration with Action configuration
+- ✅ Registration with IConfiguration binding
+- ✅ Custom section name support
+- ✅ Singleton lifetime verification
+- ✅ Null argument validation
+- ✅ Missing required options validation (DebitUrl, ClientId, ClientSecret)
+
+### Migration Guide
+
+**From manual DI** → **To extension package**:
+
+**Before**:
+```csharp
+services.Configure<BlinkPayProperties>(config.GetSection("BlinkPay"));
+services.AddSingleton(resolver => resolver.GetRequiredService<IOptions<BlinkPayProperties>>().Value);
+services.AddLogging(builder => builder.AddConsole().AddDebug());
+var serviceProvider = services.BuildServiceProvider();
+var logger = serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("BlinkDebitClient");
+services.AddSingleton(logger);
+services.AddSingleton<BlinkDebitClient>();
+```
+
+**After**:
+```csharp
+services.AddBlinkDebitClient(builder.Configuration);
+```
+
+**Changes required**:
+1. Install `BlinkDebitApiClient.Extensions.DependencyInjection` package
+2. Replace manual registration with `AddBlinkDebitClient()`
+3. Change dependency from `BlinkDebitClient` to `IBlinkDebitClient`
+4. Update appsettings structure if needed (see BlinkDebitClientOptions)
+
+---
+
 ## Testing Patterns
 
 ### Test Structure
@@ -488,12 +768,13 @@ GatewayAwaitingSubmission → AwaitingAuthorisation → Authorised → Consumed
 
 ### 5. Idempotency
 
-**Always use unique idempotency keys** for payment creation:
+**Idempotency keys are auto-generated** for all POST operations (consents, payments, refunds). You can optionally provide your own:
 ```csharp
-RequestHeaders[BlinkDebitConstant.IDEMPOTENCY_KEY.GetValue()] = Guid.NewGuid().ToString();
+// Optional - SDK auto-generates if not provided
+RequestHeaders[BlinkDebitConstant.IDEMPOTENCY_KEY.GetValue()] = "my-custom-key";
 ```
 
-**Reusing keys**: Same key = same result (idempotent retry, not duplicate)
+**Key behavior**: Same key = same result (idempotent retry, not duplicate). Keys are automatically reused across retry attempts.
 
 ### 6. Correlation IDs for Support
 
@@ -579,6 +860,104 @@ catch (BlinkServiceException e)
 
 ---
 
+## Idempotency-Key Handling
+
+For POST operations (create consent, payment, refund), the SDK **automatically generates a UUID** for the `idempotency-key` header if not provided by the caller.
+
+### Auto-generation
+
+The following operations automatically generate idempotency keys:
+- `CreateSingleConsentAsync` / `CreateSingleConsent`
+- `CreateEnduringConsentAsync` / `CreateEnduringConsent`
+- `CreateQuickPaymentAsync` / `CreateQuickPayment`
+- `CreatePaymentAsync` / `CreatePayment`
+- `CreateRefundAsync` / `CreateRefund`
+
+### Key Reuse Across Retries
+
+The same idempotency-key is **automatically reused across all retry attempts** by Polly's retry policy, ensuring idempotent behavior even during transient failures.
+
+**Implementation**: When a retry occurs, the same `RequestOptions` object (with the same headers) is reused, preserving the idempotency-key generated on the first attempt.
+
+### Custom Idempotency Key
+
+Callers can still provide their own idempotency-key via `requestHeaders`:
+
+```csharp
+var headers = new Dictionary<string, string?>
+{
+    [BlinkDebitConstant.IDEMPOTENCY_KEY.GetValue()] = "my-custom-key-12345"
+};
+await client.CreateSingleConsentAsync(headers, consentRequest);
+```
+
+### Why This Matters
+
+**Without idempotency-key**:
+- Network errors during retries could create duplicate consents/payments
+- Multiple identical requests could process multiple times
+
+**With auto-generated idempotency-key**:
+- ✅ Same key reused across retries = server recognizes duplicate request
+- ✅ Server returns the original result instead of creating duplicates
+- ✅ Safe to retry without manual key management
+
+**Best Practice**: Let the SDK auto-generate the key unless you have a specific business requirement for custom keys (e.g., tying operations to external transaction IDs).
+
+---
+
+## Request ID and Correlation ID Handling
+
+The SDK **automatically generates UUIDs** for both `request-id` and `x-correlation-id` headers if not provided by the caller. This ensures consistent distributed tracing across all API operations.
+
+### Auto-generation
+
+**All API operations** automatically generate these headers:
+- `request-id`: Uniquely identifies a single API request
+- `x-correlation-id`: Groups related requests together (e.g., create consent → create payment)
+
+### Header Reuse Across Retries
+
+Both `request-id` and `x-correlation-id` are **automatically reused across all retry attempts** by Polly's retry policy, ensuring:
+- ✅ The same request-id is preserved across retries
+- ✅ The same correlation-id links all retry attempts
+- ✅ Complete traceability in logs and monitoring systems
+
+**Implementation**: When a retry occurs, the same `RequestOptions` object (with the same headers) is reused, preserving both IDs generated on the first attempt.
+
+### Custom Request/Correlation IDs
+
+Callers can provide their own IDs via `requestHeaders`:
+
+```csharp
+var headers = new Dictionary<string, string?>
+{
+    [BlinkDebitConstant.REQUEST_ID.GetValue()] = "my-request-id-12345",
+    [BlinkDebitConstant.CORRELATION_ID.GetValue()] = "my-correlation-id-67890"
+};
+await client.CreateSingleConsentAsync(consentRequest, headers);
+```
+
+### Why This Matters
+
+**For Distributed Tracing**:
+- ✅ Every request has a unique request-id for debugging
+- ✅ Related operations share the same correlation-id
+- ✅ Retries preserve IDs, showing they're the same logical operation
+- ✅ Logs include correlation-id in scope for easy filtering
+
+**For Support**:
+- ✅ Correlation IDs are included in HTTP 502 error responses
+- ✅ Provide correlation-id to BlinkPay support for troubleshooting
+- ✅ Request IDs help identify specific failed requests in logs
+
+**Best Practice**:
+- Let the SDK auto-generate IDs for most use cases
+- Provide custom correlation-id when linking operations across multiple API calls (e.g., create consent in one call, create payment in another)
+- Always log correlation IDs for support requests
+
+---
+
 ## Performance Considerations
 
 1. **Static Regex**: Always use `RegexOptions.Compiled` for reused patterns
@@ -586,6 +965,8 @@ catch (BlinkServiceException e)
 3. **Token refresh**: Cached with 5-minute buffer, minimal overhead
 4. **Retry policy**: 3 attempts max, exponential backoff prevents thundering herd
 5. **Async/await**: Use async methods (`*Async`) for all I/O operations
+6. **Auto-generated headers**: Request-ID, correlation-ID, and idempotency-key auto-generated as UUIDs with minimal overhead
+7. **Header reuse**: All headers preserved across retries for consistent tracing
 
 ---
 
@@ -638,12 +1019,18 @@ export BLINKPAY_CLIENT_SECRET="your-client-secret"
 ### API Clients
 - `src/BlinkDebitApiClient/Client/ApiClient.cs`
 - `src/BlinkDebitApiClient/Api/V1/BlinkDebitClient.cs`
+- `src/BlinkDebitApiClient/Api/V1/IBlinkDebitClient.cs`
+
+### Dependency Injection Extensions
+- `src/BlinkDebitApiClient.Extensions.DependencyInjection/ServiceCollectionExtensions.cs`
+- `src/BlinkDebitApiClient.Extensions.DependencyInjection/BlinkDebitClientOptions.cs`
 
 ### Data Models (OpenAPI Generated)
 - `src/BlinkDebitApiClient/Model/V1/*.cs`
 
 ### Tests
 - `src/BlinkDebitApiClient.Test/Api/V1/*Tests.cs`
+- `src/BlinkDebitApiClient.Extensions.DependencyInjection.Test/ServiceCollectionExtensionsTests.cs`
 
 ---
 
