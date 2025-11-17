@@ -1,7 +1,7 @@
 # CLAUDE.md - BlinkPay .NET SDK Code Knowledge
 
-**Last Updated**: 2025-11-07
-**Project**: Blink Debit API Client .NET SDK v1.3.0+
+**Last Updated**: 2025-11-17
+**Project**: Blink Debit API Client .NET SDK v1.5.0+
 **Framework**: .NET 8.0, C# 12
 
 ---

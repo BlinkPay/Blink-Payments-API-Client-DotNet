@@ -81,7 +81,7 @@ public static class ServiceCollectionExtensions
             // Note: Timeout and retry settings are configured via RetryConfiguration static class if needed
             return new BlinkDebitClient(
                 logger,
-                options.DebitUrl + "/payments/v1",
+                options.DebitUrl,
                 options.ClientId,
                 options.ClientSecret
             );
@@ -147,7 +147,7 @@ public static class ServiceCollectionExtensions
             // Note: Timeout and retry settings are configured via RetryConfiguration static class if needed
             return new BlinkDebitClient(
                 logger,
-                options.DebitUrl + "/payments/v1",
+                options.DebitUrl,
                 options.ClientId,
                 options.ClientSecret
             );

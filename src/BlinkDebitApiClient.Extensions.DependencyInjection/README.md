@@ -60,10 +60,73 @@ var app = builder.Build();
 
 ## Usage
 
+### Complete Working Example
+
+Here's a complete example showing how to create a quick payment with the DI extension:
+
+```csharp
+using BlinkDebitApiClient.Api.V1;
+using BlinkDebitApiClient.Exceptions;
+using BlinkDebitApiClient.Extensions.DependencyInjection;
+using BlinkDebitApiClient.Model.V1;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+// Add Blink Debit Client from configuration
+builder.Services.AddBlinkDebitClient(builder.Configuration);
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+// Quick payment endpoint
+app.MapPost("/api/quick-payment", async (IBlinkDebitClient blinkClient, ILogger<Program> logger) =>
+{
+    try
+    {
+        // Create a quick payment request
+        var gatewayFlow = new GatewayFlow("https://www.example.com/return");
+        var authFlowDetail = new AuthFlowDetail(gatewayFlow);
+        var authFlow = new AuthFlow(authFlowDetail);
+        var pcr = new Pcr("Payment"); // Particulars only (max 12 chars)
+        var amount = new Amount("1.25", Amount.CurrencyEnum.NZD);
+        var request = new QuickPaymentRequest(authFlow, pcr, amount);
+
+        // Create the payment
+        var response = await blinkClient.CreateQuickPaymentAsync(request);
+
+        return Results.Ok(new
+        {
+            quickPaymentId = response.QuickPaymentId,
+            redirectUri = response.RedirectUri
+        });
+    }
+    catch (BlinkServiceException ex)
+    {
+        logger.LogError(ex, "Failed to create quick payment");
+        return Results.Problem(ex.Message, statusCode: 500);
+    }
+})
+.WithName("CreateQuickPayment")
+.WithOpenApi();
+
+app.Run();
+```
+
 ### Inject into Controllers
 
 ```csharp
 using BlinkDebitApiClient.Api.V1;
+using BlinkDebitApiClient.Exceptions;
 using BlinkDebitApiClient.Model.V1;
 using Microsoft.AspNetCore.Mvc;
 
@@ -81,14 +144,27 @@ public class PaymentsController : ControllerBase
     }
 
     [HttpPost("quick-payment")]
-    public async Task<IActionResult> CreateQuickPayment([FromBody] QuickPaymentRequest request)
+    public async Task<IActionResult> CreateQuickPayment()
     {
         try
         {
+            // Create the payment request
+            var gatewayFlow = new GatewayFlow("https://www.example.com/return");
+            var authFlowDetail = new AuthFlowDetail(gatewayFlow);
+            var authFlow = new AuthFlow(authFlowDetail);
+            var pcr = new Pcr("Payment"); // Particulars only (max 12 chars)
+            var amount = new Amount("1.25", Amount.CurrencyEnum.NZD);
+            var request = new QuickPaymentRequest(authFlow, pcr, amount);
+
+            // Create the payment
             var payment = await _blinkClient.CreateQuickPaymentAsync(request);
-            return Ok(payment);
+            return Ok(new
+            {
+                quickPaymentId = payment.QuickPaymentId,
+                redirectUri = payment.RedirectUri
+            });
         }
-        catch (Exception ex)
+        catch (BlinkServiceException ex)
         {
             _logger.LogError(ex, "Failed to create quick payment");
             return StatusCode(500, "Payment creation failed");
@@ -101,9 +177,13 @@ public class PaymentsController : ControllerBase
         try
         {
             var payment = await _blinkClient.GetQuickPaymentAsync(id);
-            return Ok(payment);
+            return Ok(new
+            {
+                quickPaymentId = payment.QuickPaymentId,
+                status = payment.Consent.Status.ToString()
+            });
         }
-        catch (Exception ex)
+        catch (BlinkServiceException ex)
         {
             _logger.LogError(ex, "Failed to retrieve payment {PaymentId}", id);
             return NotFound();
@@ -153,7 +233,7 @@ public class PaymentProcessorService : BackgroundService
 
 | Option | Type | Required | Default | Description |
 |--------|------|----------|---------|-------------|
-| `DebitUrl` | `string` | Yes | - | Base URL for the Blink Debit API (e.g., `https://sandbox.debit.blinkpay.co.nz`) |
+| `DebitUrl` | `string` | Yes | - | Base URL for the Blink Debit API (e.g., `https://sandbox.debit.blinkpay.co.nz` for sandbox or `https://debit.blinkpay.co.nz` for production) |
 | `ClientId` | `string` | Yes | - | OAuth2 client ID for authentication |
 | `ClientSecret` | `string` | Yes | - | OAuth2 client secret for authentication |
 | `TimeoutSeconds` | `int` | No | `10` | Timeout in seconds for API requests |

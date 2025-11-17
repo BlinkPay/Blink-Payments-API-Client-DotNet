@@ -271,8 +271,11 @@ public class ApiClient : ISynchronousClient, IAsynchronousClient
 
         using (_logger.BeginScope($"CorrelationId: {correlationId}"))
         {
+            var headers = response.Headers != null
+                ? string.Join(", ", response.Headers.Select(h => $"{h.Name}={h.Value}"))
+                : "null";
             _logger.LogDebug("Status Code: {code}\nHeaders: {headers}\nBody: {body}", response.StatusCode,
-                string.Join(", ", response.Headers), response.Content);
+                headers, response.Content);
         }
     }
 
