@@ -9,6 +9,8 @@ on:
 
 jobs:
   snyk:
+    # Snyk tests are limited, so only monitor the code that actually lands on master
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -39,10 +41,10 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
           SNYK_ORG: blinkpay-zw9
           SNYK_PROJECT_NAME: blink-debit-api-client-dotnet
+        # Keep the job green when Snyk fails, e.g. because the monthly test quota has been exceeded
         continue-on-error: true
 
   build_test_sonar:
-    needs: snyk
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
