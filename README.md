@@ -1,4 +1,4 @@
-<img src="https://raw.githubusercontent.com/BlinkPay/Blink-Debit-API-Client-DotNet/master/images/blinkpay-logo.png" alt="BlinkPay" width="240">
+![BlinkPay](https://raw.githubusercontent.com/BlinkPay/Blink-Debit-API-Client-DotNet/master/images/blinkpay-logo.png)
 
 # Blink-Debit-API-Client-DotNet
 [![CI](https://github.com/BlinkPay/Blink-Debit-API-Client-DotNet/actions/workflows/build.yml/badge.svg)](https://github.com/BlinkPay/Blink-Debit-API-Client-DotNet/actions/workflows/build.yml)
