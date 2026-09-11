@@ -1,3 +1,5 @@
+<img src="https://raw.githubusercontent.com/BlinkPay/Blink-Debit-API-Client-DotNet/master/images/blinkpay-logo.png" alt="BlinkPay" width="240">
+
 # Blink-Debit-API-Client-DotNet
 [![CI](https://github.com/BlinkPay/Blink-Debit-API-Client-DotNet/actions/workflows/build.yml/badge.svg)](https://github.com/BlinkPay/Blink-Debit-API-Client-DotNet/actions/workflows/build.yml)
 [![NuGet](https://img.shields.io/nuget/v/BlinkDebitApiClient)](https://www.nuget.org/packages/BlinkDebitApiClient)

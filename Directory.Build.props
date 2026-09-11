@@ -8,6 +8,8 @@
       Raise this to 14 once net8.0 support is dropped.
     -->
     <LangVersion>12</LangVersion>
+    <!-- Generate packages.lock.json per project so dependency scanners (Aikido, Snyk) see exact resolved versions. -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
 
 </Project>

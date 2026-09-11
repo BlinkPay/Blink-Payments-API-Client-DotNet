@@ -550,7 +550,7 @@ public class BlinkDebitClientTests : IDisposable
         catch (Exception e)
         {
             Assert.IsType<BlinkResourceNotFoundException>(e);
-            Assert.Equal("Consent with ID [" + consentId + "] does not exist", e.Message);
+            Assert.Equal("Quick payment with ID [" + consentId + "] does not exist", e.Message);
         }
     }
 
@@ -681,7 +681,7 @@ public class BlinkDebitClientTests : IDisposable
         catch (Exception e)
         {
             Assert.IsType<BlinkResourceNotFoundException>(e);
-            Assert.Equal("Consent with ID [" + consentId + "] does not exist", e.Message);
+            Assert.Equal("Quick payment with ID [" + consentId + "] does not exist", e.Message);
         }
     }
 

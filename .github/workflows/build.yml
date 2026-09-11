@@ -12,6 +12,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Nothing in this job pushes back to the repo, so don't leave the token in .git/config
+          persist-credentials: false
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
         with:
@@ -23,10 +26,10 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
           restore-keys: ${{ runner.os }}-nuget-
       - name: Restore NuGet packages
-        run: dotnet restore
+        run: dotnet restore --locked-mode
       - name: Run Snyk to check for vulnerabilities
         uses: snyk/actions/dotnet@12140f4059e244892ae643824a95459a102120dd # master
         with:
@@ -44,6 +47,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          # Nothing in this job pushes back to the repo, so don't leave the token in .git/config
+          persist-credentials: false
           # Full history so SonarCloud can attribute new code accurately
           fetch-depth: 0
       - name: Setup .NET
@@ -63,12 +68,12 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
           restore-keys: ${{ runner.os }}-nuget-
       - name: Install SonarScanner
         run: dotnet tool install --global dotnet-sonarscanner
       - name: Restore NuGet packages
-        run: dotnet restore
+        run: dotnet restore --locked-mode
       - name: Begin Sonar analysis
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
