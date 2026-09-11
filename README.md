@@ -5,7 +5,7 @@
 [![NuGet](https://img.shields.io/nuget/v/BlinkDebitApiClient)](https://www.nuget.org/packages/BlinkDebitApiClient)
 [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=blink-debit-api-client-dotnet&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=blink-debit-api-client-dotnet)
 [![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=blink-debit-api-client-dotnet&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=blink-debit-api-client-dotnet)
-[![Snyk security](https://snyk.io/test/github/BlinkPay/Blink-Payments-API-Client-DotNet/badge.svg)](https://snyk.io/test/github/BlinkPay/Blink-Payments-API-Client-DotNet)
+[![Snyk security](https://snyk.io/test/github/BlinkPay/Blink-Payments-API-Client-DotNet/badge.svg)](https://app.snyk.io/org/blinkpay-zw9/project/4cb51995-2bd3-4bdf-87dc-08b145d36098)
 
 # Table of Contents
 1. [Introduction](#introduction)
