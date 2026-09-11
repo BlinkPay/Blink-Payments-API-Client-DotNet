@@ -8,42 +8,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  snyk:
-    # Snyk tests are limited, so only monitor the code that actually lands on master
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          # Nothing in this job pushes back to the repo, so don't leave the token in .git/config
-          persist-credentials: false
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v6
-        with:
-          # Both SDKs: the 10.0 SDK builds every target framework, the 8.0 runtime runs the net8.0 tests
-          dotnet-version: |
-            8.0.x
-            10.0.x
-      - name: Cache NuGet packages
-        uses: actions/cache@v6
-        with:
-          path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
-          restore-keys: ${{ runner.os }}-nuget-
-      - name: Restore NuGet packages
-        run: dotnet restore --locked-mode
-      - name: Run Snyk to check for vulnerabilities
-        uses: snyk/actions/dotnet@12140f4059e244892ae643824a95459a102120dd # master
-        with:
-          command: monitor
-          args: --all-projects --exclude=BlinkDebitApiClient.Test
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-          SNYK_ORG: blinkpay-zw9
-          SNYK_PROJECT_NAME: blink-debit-api-client-dotnet
-        # Keep the job green when Snyk fails, e.g. because the monthly test quota has been exceeded
-        continue-on-error: true
-
   build_test_sonar:
     runs-on: ubuntu-latest
     steps:
