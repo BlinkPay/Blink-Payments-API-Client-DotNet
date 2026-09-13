@@ -1,9 +1,11 @@
+![BlinkPay](https://raw.githubusercontent.com/BlinkPay/Blink-Debit-API-Client-DotNet/master/images/blinkpay-logo.png)
+
 # Blink-Debit-API-Client-DotNet
 [![CI](https://github.com/BlinkPay/Blink-Debit-API-Client-DotNet/actions/workflows/build.yml/badge.svg)](https://github.com/BlinkPay/Blink-Debit-API-Client-DotNet/actions/workflows/build.yml)
 [![NuGet](https://img.shields.io/nuget/v/BlinkDebitApiClient)](https://www.nuget.org/packages/BlinkDebitApiClient)
 [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=blink-debit-api-client-dotnet&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=blink-debit-api-client-dotnet)
 [![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=blink-debit-api-client-dotnet&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=blink-debit-api-client-dotnet)
-[![Snyk security](https://img.shields.io/badge/Snyk_security-monitored-9043C6)](https://app.snyk.io/org/blinkpay-zw9/project/d00cca34-5588-45f4-89a6-a23d568d0425)
+[![Snyk security](https://snyk.io/test/github/BlinkPay/Blink-Payments-API-Client-DotNet/badge.svg)](https://app.snyk.io/org/blinkpay-zw9/project/4cb51995-2bd3-4bdf-87dc-08b145d36098)
 
 # Table of Contents
 1. [Introduction](#introduction)

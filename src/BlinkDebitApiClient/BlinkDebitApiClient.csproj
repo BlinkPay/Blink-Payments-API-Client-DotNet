@@ -12,13 +12,13 @@
     <Description>Blink Debit API Client for .NET 8 and .NET 10</Description>
     <Copyright>Copyright (c) 2023 BlinkPay</Copyright>
     <RootNamespace>BlinkDebitApiClient</RootNamespace>
-    <Version>1.8.0</Version>
+    <Version>1.8.1</Version>
     <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\BlinkDebitApiClient.xml</DocumentationFile>
     <RepositoryUrl>https://github.com/BlinkPay/Blink-Debit-API-Client-DotNet.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <Nullable>annotations</Nullable>
     <PackageProjectUrl>https://github.com/BlinkPay/Blink-Debit-API-Client-DotNet</PackageProjectUrl>
-    <PackageIcon>bp.png</PackageIcon>
+    <PackageIcon>blinkpay.png</PackageIcon>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -26,11 +26,11 @@
 
   <ItemGroup>
     <PackageReference Include="JsonSubTypes" Version="2.1.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.11" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.11" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="10.0.11" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.11" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.12" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="Polly.Contrib.WaitAndRetry" Version="1.1.1" />
     <PackageReference Include="RestSharp" Version="114.0.0" />
@@ -41,10 +41,10 @@
 
   <ItemGroup>
     <None Include="../../README.md" Pack="true" PackagePath="\" />
-    <None Include="..\..\images\bp.png">
+    <None Include="..\..\images\blinkpay.png">
       <Pack>True</Pack>
       <PackagePath></PackagePath>
-      <Link>bp.png</Link>
+      <Link>blinkpay.png</Link>
     </None>
   </ItemGroup>
 </Project>
