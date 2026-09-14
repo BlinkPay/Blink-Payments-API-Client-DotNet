@@ -26,6 +26,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Runtime.ExceptionServices;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -527,6 +528,31 @@ public class ApiClient : ISynchronousClient, IAsynchronousClient
         return transformed;
     }
 
+    /// <summary>
+    /// Rethrows the exception a retry policy finished on, preserving its original stack trace.
+    /// <para>
+    /// The alternative — reporting the fault as a synthetic response carrying the exception — hides it:
+    /// such a response has no status code, and the exception factory only translates statuses of 400 and
+    /// above, so the operation would return null data as though the call had succeeded. Anything the
+    /// policy does not handle, an authenticator failure included, arrives here on its first occurrence.
+    /// </para>
+    /// </summary>
+    /// <param name="outcome">The outcome reported by the retry policy.</param>
+    /// <param name="finalException">The exception the policy finished on, if it faulted.</param>
+    /// <param name="request">The request being executed, for logging.</param>
+    private void ThrowIfFaulted(OutcomeType outcome, Exception finalException, RestRequest request)
+    {
+        if (outcome == OutcomeType.Successful || finalException == null)
+        {
+            return;
+        }
+
+        _logger.LogError(finalException, "Request to {resource} failed after exhausting the retry policy",
+            request.Resource);
+
+        ExceptionDispatchInfo.Capture(finalException).Throw();
+    }
+
     private ApiResponse<T> Exec<T>(RestRequest req, RequestOptions options, IReadableConfiguration configuration)
     {
         var baseUrl = configuration.GetOperationServerUrl(options.Operation, options.OperationIndex) ?? _baseUrl;
@@ -561,12 +587,9 @@ public class ApiClient : ISynchronousClient, IAsynchronousClient
         {
             var policy = RetryConfiguration.RetryPolicy;
             var policyResult = policy.ExecuteAndCapture(() => client.Execute(req));
-            response = (policyResult.Outcome == OutcomeType.Successful)
-                ? client.Deserialize<T>(policyResult.Result)
-                : new RestResponse<T>(req)
-                {
-                    ErrorException = policyResult.FinalException
-                };
+            ThrowIfFaulted(policyResult.Outcome, policyResult.FinalException, req);
+
+            response = client.Deserialize<T>(policyResult.Result);
         }
         else
         {
@@ -661,12 +684,9 @@ public class ApiClient : ISynchronousClient, IAsynchronousClient
             var policy = RetryConfiguration.AsyncRetryPolicy;
             var policyResult = await policy
                 .ExecuteAndCaptureAsync(ct => client.ExecuteAsync(req, ct), cancellationToken).ConfigureAwait(false);
-            response = policyResult.Outcome == OutcomeType.Successful
-                ? client.Deserialize<T>(policyResult.Result)
-                : new RestResponse<T>(req)
-                {
-                    ErrorException = policyResult.FinalException
-                };
+            ThrowIfFaulted(policyResult.Outcome, policyResult.FinalException, req);
+
+            response = client.Deserialize<T>(policyResult.Result);
         }
         else
         {

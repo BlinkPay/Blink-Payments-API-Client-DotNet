@@ -23,11 +23,16 @@
 using System;
 using System.Threading.Tasks;
 using BlinkDebitApiClient.Api.V1;
+using BlinkDebitApiClient.Client;
+using BlinkDebitApiClient.Client.Auth;
 using BlinkDebitApiClient.Config;
 using BlinkDebitApiClient.Exceptions;
 using Microsoft.Extensions.Logging;
 using Polly;
 using RestSharp;
+using WireMock.RequestBuilders;
+using WireMock.ResponseBuilders;
+using WireMock.Server;
 using Xunit;
 
 namespace BlinkDebitApiClient.Test.Api.V1;
@@ -51,6 +56,9 @@ public class RetryPolicyTests : IDisposable
 
     private readonly AsyncPolicy<RestResponse> _originalAsyncRetryPolicy;
 
+    private readonly ILogger _logger = LoggerFactory.Create(builder => builder.AddDebug())
+        .CreateLogger<RetryPolicyTests>();
+
     public RetryPolicyTests()
     {
         _originalRetryPolicy = RetryConfiguration.RetryPolicy;
@@ -60,9 +68,8 @@ public class RetryPolicyTests : IDisposable
         // real policy configuration rather than a copy of it. The constructor validates its
         // arguments, builds an ApiClient and its OAuth authenticator, and installs the policies;
         // it issues no request, so these placeholder credentials are never sent anywhere.
-        _ = new BlinkDebitClient(
-            LoggerFactory.Create(builder => builder.AddDebug()).CreateLogger<RetryPolicyTests>(),
-            "https://sandbox.debit.blinkpay.co.nz", "test-client-id", "test-client-secret", 10000, true);
+        _ = new BlinkDebitClient(_logger, "https://sandbox.debit.blinkpay.co.nz", "test-client-id",
+            "test-client-secret", 10000, true);
     }
 
     /// <summary>
@@ -112,5 +119,36 @@ public class RetryPolicyTests : IDisposable
 
         Assert.Equal(2, attempts);
         Assert.NotNull(response);
+    }
+
+    [Fact(DisplayName = "A failure the policy finishes on reaches the caller instead of an empty response")]
+    public async Task PolicyFailureReachesTheCaller()
+    {
+        // A token endpoint that answers without an access token makes the authenticator throw, which is
+        // the failure the retry branch used to absorb into a response with no status code
+        using var server = WireMockServer.Start();
+        server.Given(Request.Create().WithPath("/oauth2/token").UsingPost())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("{\"token_type\":\"Bearer\"}"));
+
+        // The configuration is handed over as-is rather than through the URL constructor, whose
+        // validation rightly rejects the stub's plain-HTTP loopback address
+        var configuration = new Configuration
+        {
+            BasePath = server.Url + "/payments/v1",
+            OAuthTokenUrl = server.Url + "/oauth2/token",
+            OAuthClientId = "test-client-id",
+            OAuthClientSecret = "test-client-secret",
+            OAuthFlow = OAuthFlow.APPLICATION,
+            RetryEnabled = true
+        };
+
+        var client = new BlinkDebitClient(_logger, new ApiClient(_logger, configuration), configuration);
+
+        var exception = await Assert.ThrowsAsync<BlinkServiceException>(() => client.GetMetaAsync());
+
+        Assert.Contains("returned no access token", exception.Message);
     }
 }

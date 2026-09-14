@@ -55,19 +55,17 @@ comes from the `expires_in` field of the OAuth2 token response, recorded when th
 
 ```csharp
 // In GetToken(), after a successful token response
-var expiry = DateTimeOffset.UtcNow;
-if (response.ExpiresIn > 0)
-{
-    // Never give up more than half the lifetime of a short-lived token to the buffer
-    var bufferSeconds = Math.Min(ExpiryBufferSeconds, response.ExpiresIn / 2);
-    expiry = expiry.AddSeconds(response.ExpiresIn - bufferSeconds);
-}
+var expiresIn = response.ExpiresIn > 0 ? response.ExpiresIn : DefaultExpiresInSeconds;
 
-Interlocked.Exchange(ref _tokenExpiryTicks, expiry.UtcTicks);
+// Never give up more than half the lifetime of a short-lived token to the buffer
+var bufferSeconds = Math.Min(ExpiryBufferSeconds, expiresIn / 2);
+var expiryMillis = Environment.TickCount64 + (expiresIn - bufferSeconds) * 1000L;
+
+return ($"{response.TokenType} {response.AccessToken}", expiryMillis);
 
 private bool IsTokenExpired()
 {
-    return DateTimeOffset.UtcNow.UtcTicks >= Interlocked.Read(ref _tokenExpiryTicks);
+    return Environment.TickCount64 >= Interlocked.Read(ref _tokenExpiryMillis);
 }
 ```
 
@@ -76,7 +74,14 @@ private bool IsTokenExpired()
 - **Never parse the access token to read its claims.** The token is opaque to the SDK, and decoding
   a JWT without verifying its signature (`JwtSecurityTokenHandler.ReadJwtToken`) trusts attacker-
   controllable claims — Aikido flags this as an authentication bypass. Use `expires_in` instead.
-- A missing or non-positive `expires_in` leaves the token expired, so the next call refreshes it
+- `expires_in` is only RECOMMENDED by RFC 6749 section 5.1, so a response missing it falls back to
+  `DefaultExpiresInSeconds` (3600), which is what BlinkPay issues and what the other BlinkPay SDKs assume
+- The deadline is measured on the monotonic clock (`Environment.TickCount64`), so a wall-clock
+  adjustment cannot extend a token's lifetime
+- **Publish the deadline after the token it describes.** The fast path reads `Token` and the deadline
+  without a lock; writing the deadline first opens a window where a stale token is paired with a fresh
+  deadline and is sent after it has genuinely expired. The resulting 401 is not retried, because
+  `BlinkUnauthorisedException` is not a `BlinkRetryableException`.
 - OAuth refresh logic is automatic and transparent
 - **Thread-safe token refresh**: Uses `SemaphoreSlim` to prevent race conditions
 
@@ -100,7 +105,9 @@ protected override async ValueTask<Parameter> GetAuthenticationParameter(string 
         // Double-check pattern: another thread might have refreshed while we were waiting
         if (string.IsNullOrEmpty(Token) || IsTokenExpired())
         {
-            Token = await GetToken().ConfigureAwait(false);
+            var (token, expiryMillis) = await GetToken().ConfigureAwait(false);
+            Token = token;
+            Interlocked.Exchange(ref _tokenExpiryMillis, expiryMillis);
         }
 
         return new HeaderParameter(KnownHeaders.Authorization, Token);
@@ -303,6 +310,9 @@ Returns: HeaderParameter with Bearer token
 - Token refresh is automatic and transparent
 - 5-minute buffer before expiry, capped at half the token lifetime
 - Expiry is tracked from the `expires_in` field of the token response, not from the token itself
+- A response without `expires_in` is treated as a one-hour token
+- The token is published before its deadline, so a lock-free reader can never pair a stale token with
+  a fresh deadline
 - Each token request creates/disposes RestClient
 
 ### 2. API Client Pattern
@@ -345,6 +355,11 @@ Map to specific exception:
 ```
 
 **Key Points**:
+- **A retry policy that finishes on a fault rethrows** (`ApiClient.ThrowIfFaulted`). Reporting the
+  fault as a synthetic response instead hides it: such a response has no status code, and the
+  exception factory only translates statuses of 400 and above, so the operation would hand back null
+  data as though the call had succeeded. Authenticator failures arrive this way on their first
+  occurrence, since the policy does not handle them.
 - Centralized exception factory
 - Correlation IDs for debugging 502 errors
 - Null-safe deserialization

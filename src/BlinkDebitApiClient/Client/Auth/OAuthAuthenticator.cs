@@ -42,6 +42,13 @@ public class OAuthAuthenticator : AuthenticatorBase, IDisposable
     /// </summary>
     private const int ExpiryBufferSeconds = 300;
 
+    /// <summary>
+    /// The lifetime assumed when the token response omits <c>expires_in</c>, which RFC 6749 section 5.1
+    /// only recommends rather than requires. It matches what BlinkPay issues, and what the other BlinkPay
+    /// SDKs assume, so a response missing the field is treated as an ordinary one-hour token.
+    /// </summary>
+    private const int DefaultExpiresInSeconds = 3600;
+
     private readonly string _tokenUrl;
     private readonly string _clientId;
     private readonly string _clientSecret;
@@ -51,10 +58,12 @@ public class OAuthAuthenticator : AuthenticatorBase, IDisposable
     private readonly SemaphoreSlim _tokenRefreshSemaphore = new SemaphoreSlim(1, 1);
 
     /// <summary>
-    /// The UTC tick count at which the current token must be refreshed. Zero until the first token
-    /// is fetched, which makes the authenticator start out with an expired token.
+    /// The <see cref="Environment.TickCount64"/> reading at which the current token must be refreshed.
+    /// A monotonic clock is used rather than the wall clock so that a clock adjustment cannot extend
+    /// the lifetime of a token. Zero until the first token is fetched, which makes the authenticator
+    /// start out with an expired token.
     /// </summary>
-    private long _tokenExpiryTicks;
+    private long _tokenExpiryMillis;
 
     private bool _disposed;
 
@@ -99,7 +108,13 @@ public class OAuthAuthenticator : AuthenticatorBase, IDisposable
             // Double-check pattern: another thread might have refreshed while we were waiting
             if (string.IsNullOrEmpty(Token) || IsTokenExpired())
             {
-                Token = await GetToken().ConfigureAwait(false);
+                var (token, expiryMillis) = await GetToken().ConfigureAwait(false);
+
+                // Publish the deadline after the token it describes: a reader that sees the new token
+                // against the old deadline merely takes the slow path and re-checks, whereas the
+                // reverse order would hand out an expired token as though it were fresh
+                Token = token;
+                Interlocked.Exchange(ref _tokenExpiryMillis, expiryMillis);
             }
 
             return new HeaderParameter(KnownHeaders.Authorization, Token);
@@ -118,14 +133,14 @@ public class OAuthAuthenticator : AuthenticatorBase, IDisposable
     /// <returns>True if the token is expired or about to expire, false otherwise.</returns>
     private bool IsTokenExpired()
     {
-        return DateTimeOffset.UtcNow.UtcTicks >= Interlocked.Read(ref _tokenExpiryTicks);
+        return Environment.TickCount64 >= Interlocked.Read(ref _tokenExpiryMillis);
     }
 
     /// <summary>
     /// Gets the token from the OAuth2 server.
     /// </summary>
-    /// <returns>An authentication token.</returns>
-    private async Task<string> GetToken()
+    /// <returns>The authentication token and the monotonic deadline at which it must be refreshed.</returns>
+    private async Task<(string Token, long ExpiryMillis)> GetToken()
     {
         using var client = new RestClient(_tokenUrl,
             configureSerialization: s => s.UseSerializer(() => new CustomJsonCodec(_serializerSettings, _configuration)));
@@ -141,18 +156,13 @@ public class OAuthAuthenticator : AuthenticatorBase, IDisposable
                 $"OAuth2 token request to {_tokenUrl} returned no access token");
         }
 
-        // A missing or non-positive lifetime leaves the token expired, forcing a refresh on next use
-        var expiry = DateTimeOffset.UtcNow;
-        if (response.ExpiresIn > 0)
-        {
-            // Never give up more than half the lifetime of a short-lived token to the buffer
-            var bufferSeconds = Math.Min(ExpiryBufferSeconds, response.ExpiresIn / 2);
-            expiry = expiry.AddSeconds(response.ExpiresIn - bufferSeconds);
-        }
+        var expiresIn = response.ExpiresIn > 0 ? response.ExpiresIn : DefaultExpiresInSeconds;
 
-        Interlocked.Exchange(ref _tokenExpiryTicks, expiry.UtcTicks);
+        // Never give up more than half the lifetime of a short-lived token to the buffer
+        var bufferSeconds = Math.Min(ExpiryBufferSeconds, expiresIn / 2);
+        var expiryMillis = Environment.TickCount64 + (expiresIn - bufferSeconds) * 1000L;
 
-        return $"{response.TokenType} {response.AccessToken}";
+        return ($"{response.TokenType} {response.AccessToken}", expiryMillis);
     }
 
     /// <summary>
