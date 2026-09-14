@@ -1,6 +1,6 @@
 # CLAUDE.md - BlinkPay .NET SDK Code Knowledge
 
-**Last Updated**: 2026-09-02
+**Last Updated**: 2026-09-14
 **Project**: Blink Debit API Client .NET SDK v1.5.0+
 **Framework**: .NET 8.0 and .NET 10.0 (multi-targeted), C# 12
 
@@ -50,29 +50,33 @@ var quickPayment = await client.CreateQuickPaymentAsync(request, headers);
 
 **Location**: `src/BlinkDebitApiClient/Client/Auth/OAuthAuthenticator.cs`
 
-The SDK implements automatic token refresh with a 5-minute buffer before expiration:
+The SDK implements automatic token refresh with a 5-minute buffer before expiration. The expiry
+comes from the `expires_in` field of the OAuth2 token response, recorded when the token is fetched:
 
 ```csharp
-private bool IsTokenExpired(string token)
+// In GetToken(), after a successful token response
+var expiry = DateTimeOffset.UtcNow;
+if (response.ExpiresIn > 0)
 {
-    try
-    {
-        var handler = new JwtSecurityTokenHandler();
-        var jwtToken = handler.ReadJwtToken(token.Replace(BlinkDebitConstant.BEARER.GetValue(), string.Empty));
-        // Add 5-minute buffer to refresh before actual expiration
-        var expiryWithBuffer = jwtToken.ValidTo.AddMinutes(-5);
-        return expiryWithBuffer <= DateTimeOffset.UtcNow;
-    }
-    catch
-    {
-        return true; // If token cannot be parsed, consider it expired
-    }
+    // Never give up more than half the lifetime of a short-lived token to the buffer
+    var bufferSeconds = Math.Min(ExpiryBufferSeconds, response.ExpiresIn / 2);
+    expiry = expiry.AddSeconds(response.ExpiresIn - bufferSeconds);
+}
+
+Interlocked.Exchange(ref _tokenExpiryTicks, expiry.UtcTicks);
+
+private bool IsTokenExpired()
+{
+    return DateTimeOffset.UtcNow.UtcTicks >= Interlocked.Read(ref _tokenExpiryTicks);
 }
 ```
 
 **Implementation Notes**:
 - Always add expiry buffer to prevent edge-case failures
-- JWT token validation handles parse exceptions gracefully
+- **Never parse the access token to read its claims.** The token is opaque to the SDK, and decoding
+  a JWT without verifying its signature (`JwtSecurityTokenHandler.ReadJwtToken`) trusts attacker-
+  controllable claims — Aikido flags this as an authentication bypass. Use `expires_in` instead.
+- A missing or non-positive `expires_in` leaves the token expired, so the next call refreshes it
 - OAuth refresh logic is automatic and transparent
 - **Thread-safe token refresh**: Uses `SemaphoreSlim` to prevent race conditions
 
@@ -84,7 +88,7 @@ The token refresh mechanism is **thread-safe** to prevent race conditions in hig
 protected override async ValueTask<Parameter> GetAuthenticationParameter(string accessToken)
 {
     // Fast path: if token is valid, return immediately without acquiring semaphore
-    if (!string.IsNullOrEmpty(Token) && !IsTokenExpired(Token))
+    if (!string.IsNullOrEmpty(Token) && !IsTokenExpired())
     {
         return new HeaderParameter(KnownHeaders.Authorization, Token);
     }
@@ -94,7 +98,7 @@ protected override async ValueTask<Parameter> GetAuthenticationParameter(string 
     try
     {
         // Double-check pattern: another thread might have refreshed while we were waiting
-        if (string.IsNullOrEmpty(Token) || IsTokenExpired(Token))
+        if (string.IsNullOrEmpty(Token) || IsTokenExpired())
         {
             Token = await GetToken().ConfigureAwait(false);
         }
@@ -288,7 +292,7 @@ OAuthAuthenticator (implements IAuthenticator)
   ↓
 GetAuthenticationParameter() - called before each request
   ↓
-Checks: IsTokenExpired(Token)
+Checks: IsTokenExpired()
   ↓
 If expired: GetToken() - fetches new OAuth token
   ↓
@@ -297,8 +301,8 @@ Returns: HeaderParameter with Bearer token
 
 **Key Points**:
 - Token refresh is automatic and transparent
-- 5-minute buffer before expiry
-- JWT validation handles token parsing
+- 5-minute buffer before expiry, capped at half the token lifetime
+- Expiry is tracked from the `expires_in` field of the token response, not from the token itself
 - Each token request creates/disposes RestClient
 
 ### 2. API Client Pattern
@@ -976,7 +980,7 @@ await client.CreateSingleConsentAsync(consentRequest, headers);
 - ✓ Never hardcode credentials
 - ✓ Use environment variables or secure vaults
 - ✓ HTTPS only (enforced by SDK)
-- ✓ JWT tokens validated before use
+- ✓ Access tokens treated as opaque — never decoded or trusted client-side
 - ✓ Correlation IDs for audit trails
 - ✓ Request IDs for tracing
 - ✓ Idempotency keys for duplicate prevention

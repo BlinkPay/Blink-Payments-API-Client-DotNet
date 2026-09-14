@@ -28,4 +28,9 @@ class TokenResponse
 {
     [JsonProperty("token_type")] public string TokenType { get; set; }
     [JsonProperty("access_token")] public string AccessToken { get; set; }
+
+    /// <summary>
+    /// The lifetime of the access token in seconds, as reported by the OAuth2 server.
+    /// </summary>
+    [JsonProperty("expires_in")] public int ExpiresIn { get; set; }
 }

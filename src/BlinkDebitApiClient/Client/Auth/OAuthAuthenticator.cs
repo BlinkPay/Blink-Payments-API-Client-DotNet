@@ -21,11 +21,10 @@
  */
 
 using System;
-using System.IdentityModel.Tokens.Jwt;
 using System.Threading;
 using System.Threading.Tasks;
 using BlinkDebitApiClient.Config;
-using BlinkDebitApiClient.Enums;
+using BlinkDebitApiClient.Exceptions;
 using Newtonsoft.Json;
 using RestSharp;
 using RestSharp.Authenticators;
@@ -37,6 +36,12 @@ namespace BlinkDebitApiClient.Client.Auth;
 /// </summary>
 public class OAuthAuthenticator : AuthenticatorBase, IDisposable
 {
+    /// <summary>
+    /// How long before the actual expiry the token is treated as expired, so that it is refreshed
+    /// ahead of time rather than mid-request.
+    /// </summary>
+    private const int ExpiryBufferSeconds = 300;
+
     private readonly string _tokenUrl;
     private readonly string _clientId;
     private readonly string _clientSecret;
@@ -44,6 +49,13 @@ public class OAuthAuthenticator : AuthenticatorBase, IDisposable
     private readonly JsonSerializerSettings _serializerSettings;
     private readonly IReadableConfiguration _configuration;
     private readonly SemaphoreSlim _tokenRefreshSemaphore = new SemaphoreSlim(1, 1);
+
+    /// <summary>
+    /// The UTC tick count at which the current token must be refreshed. Zero until the first token
+    /// is fetched, which makes the authenticator start out with an expired token.
+    /// </summary>
+    private long _tokenExpiryTicks;
+
     private bool _disposed;
 
     /// <summary>
@@ -75,7 +87,7 @@ public class OAuthAuthenticator : AuthenticatorBase, IDisposable
     protected override async ValueTask<Parameter> GetAuthenticationParameter(string accessToken)
     {
         // Fast path: if token is valid, return immediately without acquiring semaphore
-        if (!string.IsNullOrEmpty(Token) && !IsTokenExpired(Token))
+        if (!string.IsNullOrEmpty(Token) && !IsTokenExpired())
         {
             return new HeaderParameter(KnownHeaders.Authorization, Token);
         }
@@ -85,7 +97,7 @@ public class OAuthAuthenticator : AuthenticatorBase, IDisposable
         try
         {
             // Double-check pattern: another thread might have refreshed while we were waiting
-            if (string.IsNullOrEmpty(Token) || IsTokenExpired(Token))
+            if (string.IsNullOrEmpty(Token) || IsTokenExpired())
             {
                 Token = await GetToken().ConfigureAwait(false);
             }
@@ -99,25 +111,14 @@ public class OAuthAuthenticator : AuthenticatorBase, IDisposable
     }
 
     /// <summary>
-    /// Checks if the token has expired or is about to expire (within 5 minutes).
+    /// Checks if the token has expired or is about to expire, against the deadline recorded when the
+    /// token was fetched. The deadline comes from the OAuth2 token response rather than from the
+    /// token itself: the access token is opaque to this client and its claims are unverified here.
     /// </summary>
-    /// <param name="token">The token to check.</param>
     /// <returns>True if the token is expired or about to expire, false otherwise.</returns>
-    private bool IsTokenExpired(string token)
+    private bool IsTokenExpired()
     {
-        try
-        {
-            var handler = new JwtSecurityTokenHandler();
-            var jwtToken = handler.ReadJwtToken(token.Replace(BlinkDebitConstant.BEARER.GetValue(), string.Empty));
-            // Add 5-minute buffer to refresh before actual expiration
-            var expiryWithBuffer = jwtToken.ValidTo.AddMinutes(-5);
-            return expiryWithBuffer <= DateTimeOffset.UtcNow;
-        }
-        catch
-        {
-            // If token cannot be parsed, consider it expired
-            return true;
-        }
+        return DateTimeOffset.UtcNow.UtcTicks >= Interlocked.Read(ref _tokenExpiryTicks);
     }
 
     /// <summary>
@@ -134,6 +135,23 @@ public class OAuthAuthenticator : AuthenticatorBase, IDisposable
             .AddParameter("client_id", _clientId)
             .AddParameter("client_secret", _clientSecret);
         var response = await client.PostAsync<TokenResponse>(request).ConfigureAwait(false);
+        if (response == null || string.IsNullOrEmpty(response.AccessToken))
+        {
+            throw new BlinkServiceException(
+                $"OAuth2 token request to {_tokenUrl} returned no access token");
+        }
+
+        // A missing or non-positive lifetime leaves the token expired, forcing a refresh on next use
+        var expiry = DateTimeOffset.UtcNow;
+        if (response.ExpiresIn > 0)
+        {
+            // Never give up more than half the lifetime of a short-lived token to the buffer
+            var bufferSeconds = Math.Min(ExpiryBufferSeconds, response.ExpiresIn / 2);
+            expiry = expiry.AddSeconds(response.ExpiresIn - bufferSeconds);
+        }
+
+        Interlocked.Exchange(ref _tokenExpiryTicks, expiry.UtcTicks);
+
         return $"{response.TokenType} {response.AccessToken}";
     }
 
