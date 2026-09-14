@@ -151,4 +151,33 @@ public class RetryPolicyTests : IDisposable
 
         Assert.Contains("returned no access token", exception.Message);
     }
+
+    [Fact(DisplayName = "A failure outside the Blink hierarchy still reaches the caller as a BlinkServiceException")]
+    public async Task ForeignFailureIsWrappedForTheCaller()
+    {
+        // Every operation documents BlinkServiceException and the README tells integrators to catch it,
+        // so the exceptions the policy retries on — none of which derive from it — must not escape raw
+        RetryConfiguration.AsyncRetryPolicy = Policy<RestResponse>
+            .Handle<BlinkRetryableException>()
+            .RetryAsync(1);
+
+        // Nothing listens on port 1, so the connection is refused immediately and the transport
+        // exception that follows is one the stand-in policy above does not handle
+        var configuration = new Configuration
+        {
+            BasePath = "http://127.0.0.1:1/payments/v1",
+            OAuthTokenUrl = "http://127.0.0.1:1/oauth2/token",
+            OAuthClientId = "test-client-id",
+            OAuthClientSecret = "test-client-secret",
+            OAuthFlow = OAuthFlow.APPLICATION,
+            RetryEnabled = true
+        };
+
+        var client = new BlinkDebitClient(_logger, new ApiClient(_logger, configuration), configuration);
+
+        var exception = await Assert.ThrowsAsync<BlinkServiceException>(() => client.GetMetaAsync());
+
+        Assert.IsNotType<BlinkServiceException>(exception.InnerException);
+        Assert.IsAssignableFrom<Exception>(exception.InnerException);
+    }
 }

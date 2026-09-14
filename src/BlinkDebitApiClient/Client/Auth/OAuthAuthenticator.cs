@@ -21,6 +21,7 @@
  */
 
 using System;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using BlinkDebitApiClient.Config;
@@ -44,8 +45,8 @@ public class OAuthAuthenticator : AuthenticatorBase, IDisposable
 
     /// <summary>
     /// The lifetime assumed when the token response omits <c>expires_in</c>, which RFC 6749 section 5.1
-    /// only recommends rather than requires. It matches what BlinkPay issues, and what the other BlinkPay
-    /// SDKs assume, so a response missing the field is treated as an ordinary one-hour token.
+    /// only recommends rather than requires. BlinkPay issues one-hour tokens, so a response missing the
+    /// field is treated as an ordinary one.
     /// </summary>
     private const int DefaultExpiresInSeconds = 3600;
 
@@ -95,10 +96,16 @@ public class OAuthAuthenticator : AuthenticatorBase, IDisposable
     /// <returns>An authentication parameter.</returns>
     protected override async ValueTask<Parameter> GetAuthenticationParameter(string accessToken)
     {
-        // Fast path: if token is valid, return immediately without acquiring semaphore
-        if (!string.IsNullOrEmpty(Token) && !IsTokenExpired())
+        // Fast path: if the token is valid, return immediately without acquiring the semaphore. The
+        // token must be read after IsTokenExpired(), whose interlocked read fences it: reading it
+        // first would allow a token from before the last refresh to be paired with the new deadline
+        if (!IsTokenExpired())
         {
-            return new HeaderParameter(KnownHeaders.Authorization, Token);
+            var currentToken = Token;
+            if (!string.IsNullOrEmpty(currentToken))
+            {
+                return new HeaderParameter(KnownHeaders.Authorization, currentToken);
+            }
         }
 
         // Slow path: token needs refresh, acquire semaphore to ensure only one thread refreshes
@@ -149,20 +156,44 @@ public class OAuthAuthenticator : AuthenticatorBase, IDisposable
             .AddParameter("grant_type", _grantType)
             .AddParameter("client_id", _clientId)
             .AddParameter("client_secret", _clientSecret);
-        var response = await client.PostAsync<TokenResponse>(request).ConfigureAwait(false);
-        if (response == null || string.IsNullOrEmpty(response.AccessToken))
+        var response = await client.ExecutePostAsync<TokenResponse>(request).ConfigureAwait(false);
+        if (response.StatusCode == 0 && response.ErrorException != null)
+        {
+            // No status code means the server never answered. The exception is rethrown as it stands,
+            // because the retry policy handles the transport failures by type and would stop
+            // recognising them behind a wrapper; it is only wrapped once the policy gives up on it
+            ExceptionDispatchInfo.Capture(response.ErrorException).Throw();
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            // The status is what tells wrong credentials apart from a malformed body. The body itself
+            // is deliberately left out: it echoes back what was sent, the client ID included
+            throw new BlinkServiceException(
+                $"OAuth2 token request to {_tokenUrl} failed with HTTP {(int)response.StatusCode}");
+        }
+
+        if (response.ErrorException != null)
+        {
+            // The server answered, but the body could not be read. The codec has already wrapped the
+            // parse failure, and its message says more than a missing access token would
+            ExceptionDispatchInfo.Capture(response.ErrorException).Throw();
+        }
+
+        var token = response.Data;
+        if (token == null || string.IsNullOrEmpty(token.AccessToken))
         {
             throw new BlinkServiceException(
                 $"OAuth2 token request to {_tokenUrl} returned no access token");
         }
 
-        var expiresIn = response.ExpiresIn > 0 ? response.ExpiresIn : DefaultExpiresInSeconds;
+        var expiresIn = token.ExpiresIn > 0 ? token.ExpiresIn : DefaultExpiresInSeconds;
 
         // Never give up more than half the lifetime of a short-lived token to the buffer
         var bufferSeconds = Math.Min(ExpiryBufferSeconds, expiresIn / 2);
         var expiryMillis = Environment.TickCount64 + (expiresIn - bufferSeconds) * 1000L;
 
-        return ($"{response.TokenType} {response.AccessToken}", expiryMillis);
+        return ($"{token.TokenType} {token.AccessToken}", expiryMillis);
     }
 
     /// <summary>

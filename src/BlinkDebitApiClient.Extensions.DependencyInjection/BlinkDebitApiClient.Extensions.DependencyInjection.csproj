@@ -10,7 +10,7 @@
     <Description>Dependency Injection extensions for BlinkDebitApiClient to enable seamless integration with ASP.NET Core and other .NET applications using Microsoft.Extensions.DependencyInjection</Description>
     <Copyright>Copyright (c) 2025 BlinkPay</Copyright>
     <RootNamespace>BlinkDebitApiClient.Extensions.DependencyInjection</RootNamespace>
-    <Version>1.8.2-SNAPSHOT</Version>
+    <Version>1.9.0-SNAPSHOT</Version>
     <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\BlinkDebitApiClient.Extensions.DependencyInjection.xml</DocumentationFile>
     <RepositoryUrl>https://github.com/BlinkPay/Blink-Debit-API-Client-DotNet.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>

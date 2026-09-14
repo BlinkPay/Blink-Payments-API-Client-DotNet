@@ -529,28 +529,50 @@ public class ApiClient : ISynchronousClient, IAsynchronousClient
     }
 
     /// <summary>
-    /// Rethrows the exception a retry policy finished on, preserving its original stack trace.
+    /// Resolves the response a retry policy finished on.
     /// <para>
-    /// The alternative — reporting the fault as a synthetic response carrying the exception — hides it:
-    /// such a response has no status code, and the exception factory only translates statuses of 400 and
-    /// above, so the operation would return null data as though the call had succeeded. Anything the
-    /// policy does not handle, an authenticator failure included, arrives here on its first occurrence.
+    /// A fault is thrown rather than reported as a synthetic response: such a response has no status
+    /// code, and the exception factory only translates statuses of 400 and above, so the operation
+    /// would return null data as though the call had succeeded. Anything the policy does not handle,
+    /// an authenticator failure included, arrives here on its first occurrence.
+    /// </para>
+    /// <para>
+    /// What leaves is a <see cref="BlinkServiceException"/>, which is what every operation documents
+    /// and what the README tells integrators to catch. The exceptions the policy retries on —
+    /// <see cref="BlinkRetryableException"/> and the transport failures — sit outside that hierarchy,
+    /// so they are wrapped once the policy gives up, keeping the original as the inner exception.
+    /// Cancellation is passed through untouched, since callers await it themselves.
     /// </para>
     /// </summary>
-    /// <param name="outcome">The outcome reported by the retry policy.</param>
-    /// <param name="finalException">The exception the policy finished on, if it faulted.</param>
+    /// <param name="policyResult">The outcome reported by the retry policy.</param>
     /// <param name="request">The request being executed, for logging.</param>
-    private void ThrowIfFaulted(OutcomeType outcome, Exception finalException, RestRequest request)
+    /// <returns>The response to deserialize.</returns>
+    /// <exception cref="BlinkServiceException">Thrown when the policy finished on an exception.</exception>
+    private RestResponse ResolvePolicyOutcome(PolicyResult<RestResponse> policyResult, RestRequest request)
     {
-        if (outcome == OutcomeType.Successful || finalException == null)
+        if (policyResult.Outcome == OutcomeType.Successful)
         {
-            return;
+            return policyResult.Result;
         }
 
-        _logger.LogError(finalException, "Request to {resource} failed after exhausting the retry policy",
+        var finalException = policyResult.FinalException;
+        if (finalException == null)
+        {
+            // The policy gave up on a response it was configured to treat as a failure. That response
+            // carries a status code, so it is left to the exception factory to translate as usual
+            return policyResult.FinalHandledResult;
+        }
+
+        _logger.LogError(finalException, "Request to {resource} failed under the retry policy",
             request.Resource);
 
-        ExceptionDispatchInfo.Capture(finalException).Throw();
+        if (finalException is BlinkServiceException || finalException is OperationCanceledException)
+        {
+            ExceptionDispatchInfo.Capture(finalException).Throw();
+        }
+
+        throw new BlinkServiceException($"Request to {request.Resource} failed: {finalException.Message}",
+            finalException);
     }
 
     private ApiResponse<T> Exec<T>(RestRequest req, RequestOptions options, IReadableConfiguration configuration)
@@ -587,9 +609,8 @@ public class ApiClient : ISynchronousClient, IAsynchronousClient
         {
             var policy = RetryConfiguration.RetryPolicy;
             var policyResult = policy.ExecuteAndCapture(() => client.Execute(req));
-            ThrowIfFaulted(policyResult.Outcome, policyResult.FinalException, req);
 
-            response = client.Deserialize<T>(policyResult.Result);
+            response = client.Deserialize<T>(ResolvePolicyOutcome(policyResult, req));
         }
         else
         {
@@ -684,9 +705,8 @@ public class ApiClient : ISynchronousClient, IAsynchronousClient
             var policy = RetryConfiguration.AsyncRetryPolicy;
             var policyResult = await policy
                 .ExecuteAndCaptureAsync(ct => client.ExecuteAsync(req, ct), cancellationToken).ConfigureAwait(false);
-            ThrowIfFaulted(policyResult.Outcome, policyResult.FinalException, req);
 
-            response = client.Deserialize<T>(policyResult.Result);
+            response = client.Deserialize<T>(ResolvePolicyOutcome(policyResult, req));
         }
         else
         {

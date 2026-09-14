@@ -74,10 +74,18 @@ private bool IsTokenExpired()
 - **Never parse the access token to read its claims.** The token is opaque to the SDK, and decoding
   a JWT without verifying its signature (`JwtSecurityTokenHandler.ReadJwtToken`) trusts attacker-
   controllable claims — Aikido flags this as an authentication bypass. Use `expires_in` instead.
+- A token request is judged by its status code first: no status at all means a transport failure and
+  is rethrown by type so the retry policy still recognises it, while an HTTP error (a 401 from wrong
+  credentials, say) becomes a `BlinkServiceException` naming the status. The body never goes into the
+  message — it echoes back what was sent, the client ID included
 - `expires_in` is only RECOMMENDED by RFC 6749 section 5.1, so a response missing it falls back to
-  `DefaultExpiresInSeconds` (3600), which is what BlinkPay issues and what the other BlinkPay SDKs assume
+  `DefaultExpiresInSeconds` (3600), matching the one-hour tokens BlinkPay issues. Nothing invalidates a
+  cached token early, so a shorter real lifetime would mean 401s until the deadline lapses
 - The deadline is measured on the monotonic clock (`Environment.TickCount64`), so a wall-clock
   adjustment cannot extend a token's lifetime
+- **Read the token after the deadline, write it before.** The fast path must call `IsTokenExpired()`
+  first and only then read `Token`: the interlocked read fences it, and reading the token first would
+  let a token from before the last refresh be paired with the new deadline.
 - **Publish the deadline after the token it describes.** The fast path reads `Token` and the deadline
   without a lock; writing the deadline first opens a window where a stale token is paired with a fresh
   deadline and is sent after it has genuinely expired. The resulting 401 is not retried, because
@@ -92,10 +100,14 @@ The token refresh mechanism is **thread-safe** to prevent race conditions in hig
 ```csharp
 protected override async ValueTask<Parameter> GetAuthenticationParameter(string accessToken)
 {
-    // Fast path: if token is valid, return immediately without acquiring semaphore
-    if (!string.IsNullOrEmpty(Token) && !IsTokenExpired())
+    // Fast path: read the token only after IsTokenExpired() has fenced it
+    if (!IsTokenExpired())
     {
-        return new HeaderParameter(KnownHeaders.Authorization, Token);
+        var currentToken = Token;
+        if (!string.IsNullOrEmpty(currentToken))
+        {
+            return new HeaderParameter(KnownHeaders.Authorization, currentToken);
+        }
     }
 
     // Slow path: token needs refresh, acquire semaphore to ensure only one thread refreshes
@@ -355,11 +367,18 @@ Map to specific exception:
 ```
 
 **Key Points**:
-- **A retry policy that finishes on a fault rethrows** (`ApiClient.ThrowIfFaulted`). Reporting the
+- **A retry policy that finishes on a fault throws** (`ApiClient.ResolvePolicyOutcome`). Reporting the
   fault as a synthetic response instead hides it: such a response has no status code, and the
   exception factory only translates statuses of 400 and above, so the operation would hand back null
   data as though the call had succeeded. Authenticator failures arrive this way on their first
   occurrence, since the policy does not handle them.
+- **What leaves an operation is always a `BlinkServiceException`.** Every method documents it and the
+  README tells integrators to catch it, but `BlinkRetryableException`, `SocketException`,
+  `WebException` and `HttpRequestException` — the four the policy retries on — all sit outside that
+  hierarchy, so they are wrapped once the policy gives up, with the original as the inner exception.
+  Cancellation passes through untouched.
+- A policy configured with `OrResult` can also give up on a handled *response*; that one carries a
+  status code, so it goes to the exception factory rather than being thrown directly.
 - Centralized exception factory
 - Correlation IDs for debugging 502 errors
 - Null-safe deserialization
