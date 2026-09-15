@@ -576,9 +576,6 @@ public class ApiClient : ISynchronousClient, IAsynchronousClient
             return policyResult.FinalHandledResult;
         }
 
-        _logger.LogError(finalException, "Request to {resource} failed under the retry policy",
-            request.Resource);
-
         if (finalException is BlinkServiceException || finalException is OperationCanceledException)
         {
             ExceptionDispatchInfo.Capture(finalException).Throw();
