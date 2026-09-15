@@ -82,3 +82,6 @@ ClientBin/
 orleans.codegen.cs
 repomix.config.json
 repomix-output.txt
+
+# Local credentials for the sandbox integration tests
+.env

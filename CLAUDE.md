@@ -1,6 +1,6 @@
 # CLAUDE.md - BlinkPay .NET SDK Code Knowledge
 
-**Last Updated**: 2026-09-02
+**Last Updated**: 2026-09-14
 **Project**: Blink Debit API Client .NET SDK v1.5.0+
 **Framework**: .NET 8.0 and .NET 10.0 (multi-targeted), C# 12
 
@@ -50,29 +50,52 @@ var quickPayment = await client.CreateQuickPaymentAsync(request, headers);
 
 **Location**: `src/BlinkDebitApiClient/Client/Auth/OAuthAuthenticator.cs`
 
-The SDK implements automatic token refresh with a 5-minute buffer before expiration:
+The SDK implements automatic token refresh with a 5-minute buffer before expiration. The expiry
+comes from the `expires_in` field of the OAuth2 token response, recorded when the token is fetched:
 
 ```csharp
-private bool IsTokenExpired(string token)
+// In GetToken(), after a successful token response
+var expiresIn = response.ExpiresIn > 0 ? response.ExpiresIn : DefaultExpiresInSeconds;
+
+// Never give up more than half the lifetime of a short-lived token to the buffer
+var bufferSeconds = Math.Min(ExpiryBufferSeconds, expiresIn / 2);
+var expiryMillis = Environment.TickCount64 + (expiresIn - bufferSeconds) * 1000L;
+
+return ($"{response.TokenType} {response.AccessToken}", expiryMillis);
+
+private bool IsTokenExpired()
 {
-    try
-    {
-        var handler = new JwtSecurityTokenHandler();
-        var jwtToken = handler.ReadJwtToken(token.Replace(BlinkDebitConstant.BEARER.GetValue(), string.Empty));
-        // Add 5-minute buffer to refresh before actual expiration
-        var expiryWithBuffer = jwtToken.ValidTo.AddMinutes(-5);
-        return expiryWithBuffer <= DateTimeOffset.UtcNow;
-    }
-    catch
-    {
-        return true; // If token cannot be parsed, consider it expired
-    }
+    return Environment.TickCount64 >= Interlocked.Read(ref _tokenExpiryMillis);
 }
 ```
 
 **Implementation Notes**:
 - Always add expiry buffer to prevent edge-case failures
-- JWT token validation handles parse exceptions gracefully
+- **Never parse the access token to read its claims.** The token is opaque to the SDK, and decoding
+  a JWT without verifying its signature (`JwtSecurityTokenHandler.ReadJwtToken`) trusts attacker-
+  controllable claims — Aikido flags this as an authentication bypass. Use `expires_in` instead.
+- A token request is judged by its status code first: no status at all means a transport failure and
+  is rethrown by type so the retry policy still recognises it, while an HTTP error (a 401 from wrong
+  credentials, say) becomes a `BlinkServiceException` naming the status. The body never goes into the
+  message — it echoes back what was sent, the client ID included
+- `expires_in` is only RECOMMENDED by RFC 6749 section 5.1, so a response missing it falls back to
+  `DefaultExpiresInSeconds` (3600), matching the one-hour tokens BlinkPay issues
+- **An HTTP 401 from the API invalidates the cached token** (`OAuthAuthenticator.Invalidate()`, called
+  from `ApiClient.InterceptResponse`). It is the only evidence this client gets that a token died
+  before its deadline, so without it a wrong lifetime means 401s until the deadline lapses. Only the
+  deadline is dropped, never `Token`, or a caller on the fast path would send an empty Authorization
+  header. A 403 is left alone: this API uses it for a caller that is authenticated but not permitted,
+  whose token is fine. The cost of a genuinely revoked client is bounded at one extra token request
+  per call, since invalidation only ever happens in response to a request the caller made
+- The deadline is measured on the monotonic clock (`Environment.TickCount64`), so a wall-clock
+  adjustment cannot extend a token's lifetime
+- **Read the token after the deadline, write it before.** The fast path must call `IsTokenExpired()`
+  first and only then read `Token`: the interlocked read fences it, and reading the token first would
+  let a token from before the last refresh be paired with the new deadline.
+- **Publish the deadline after the token it describes.** The fast path reads `Token` and the deadline
+  without a lock; writing the deadline first opens a window where a stale token is paired with a fresh
+  deadline and is sent after it has genuinely expired. The resulting 401 is not retried, because
+  `BlinkUnauthorisedException` is not a `BlinkRetryableException`.
 - OAuth refresh logic is automatic and transparent
 - **Thread-safe token refresh**: Uses `SemaphoreSlim` to prevent race conditions
 
@@ -83,10 +106,14 @@ The token refresh mechanism is **thread-safe** to prevent race conditions in hig
 ```csharp
 protected override async ValueTask<Parameter> GetAuthenticationParameter(string accessToken)
 {
-    // Fast path: if token is valid, return immediately without acquiring semaphore
-    if (!string.IsNullOrEmpty(Token) && !IsTokenExpired(Token))
+    // Fast path: read the token only after IsTokenExpired() has fenced it
+    if (!IsTokenExpired())
     {
-        return new HeaderParameter(KnownHeaders.Authorization, Token);
+        var currentToken = Token;
+        if (!string.IsNullOrEmpty(currentToken))
+        {
+            return new HeaderParameter(KnownHeaders.Authorization, currentToken);
+        }
     }
 
     // Slow path: token needs refresh, acquire semaphore to ensure only one thread refreshes
@@ -94,9 +121,11 @@ protected override async ValueTask<Parameter> GetAuthenticationParameter(string 
     try
     {
         // Double-check pattern: another thread might have refreshed while we were waiting
-        if (string.IsNullOrEmpty(Token) || IsTokenExpired(Token))
+        if (string.IsNullOrEmpty(Token) || IsTokenExpired())
         {
-            Token = await GetToken().ConfigureAwait(false);
+            var (token, expiryMillis) = await GetToken().ConfigureAwait(false);
+            Token = token;
+            Interlocked.Exchange(ref _tokenExpiryMillis, expiryMillis);
         }
 
         return new HeaderParameter(KnownHeaders.Authorization, Token);
@@ -288,7 +317,7 @@ OAuthAuthenticator (implements IAuthenticator)
   ↓
 GetAuthenticationParameter() - called before each request
   ↓
-Checks: IsTokenExpired(Token)
+Checks: IsTokenExpired()
   ↓
 If expired: GetToken() - fetches new OAuth token
   ↓
@@ -297,8 +326,11 @@ Returns: HeaderParameter with Bearer token
 
 **Key Points**:
 - Token refresh is automatic and transparent
-- 5-minute buffer before expiry
-- JWT validation handles token parsing
+- 5-minute buffer before expiry, capped at half the token lifetime
+- Expiry is tracked from the `expires_in` field of the token response, not from the token itself
+- A response without `expires_in` is treated as a one-hour token
+- The token is published before its deadline, so a lock-free reader can never pair a stale token with
+  a fresh deadline
 - Each token request creates/disposes RestClient
 
 ### 2. API Client Pattern
@@ -341,6 +373,20 @@ Map to specific exception:
 ```
 
 **Key Points**:
+- **A retry policy that finishes on a fault throws** (`ApiClient.ResolvePolicyOutcome`). Reporting the
+  fault as a synthetic response instead hides it: such a response has no status code, and the
+  exception factory only translates statuses of 400 and above, so the operation would hand back null
+  data as though the call had succeeded. Authenticator failures arrive this way on their first
+  occurrence, since the policy does not handle them.
+- **What leaves an operation is always a `BlinkServiceException`.** Every method documents it and the
+  README tells integrators to catch it, but `BlinkRetryableException`, `SocketException`,
+  `WebException` and `HttpRequestException` — the four the policy retries on — all sit outside that
+  hierarchy, so they are wrapped once the policy gives up, with the original as the inner exception.
+  Cancellation passes through untouched. **Both execution paths wrap** (`ApiClient.WrapForCaller`):
+  the guarantee cannot depend on a policy being installed, because `RetryEnabled` can be false and a
+  client built from an existing `ApiClient` never installs one.
+- A policy configured with `OrResult` can also give up on a handled *response*; that one carries a
+  status code, so it goes to the exception factory rather than being thrown directly.
 - Centralized exception factory
 - Correlation IDs for debugging 502 errors
 - Null-safe deserialization
@@ -976,7 +1022,7 @@ await client.CreateSingleConsentAsync(consentRequest, headers);
 - ✓ Never hardcode credentials
 - ✓ Use environment variables or secure vaults
 - ✓ HTTPS only (enforced by SDK)
-- ✓ JWT tokens validated before use
+- ✓ Access tokens treated as opaque — never decoded or trusted client-side
 - ✓ Correlation IDs for audit trails
 - ✓ Request IDs for tracing
 - ✓ Idempotency keys for duplicate prevention
