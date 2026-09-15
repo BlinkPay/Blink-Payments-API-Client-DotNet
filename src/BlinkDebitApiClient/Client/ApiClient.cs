@@ -265,7 +265,8 @@ public class ApiClient : ISynchronousClient, IAsynchronousClient
     /// Allows for extending response processing for <see cref="ApiClient"/> generated code.
     /// </summary>
     /// <param name="response">The RestSharp response object</param>
-    private void InterceptResponse(RestResponseBase response)
+    /// <param name="configuration">The configuration holding the authenticator to notify of a rejection</param>
+    private void InterceptResponse(RestResponseBase response, IReadableConfiguration configuration)
     {
         var correlationId = response.Headers?.SingleOrDefault(h =>
                 h.Name.Equals(BlinkDebitConstant.CORRELATION_ID.GetValue(), StringComparison.OrdinalIgnoreCase))?.Value
@@ -278,6 +279,17 @@ public class ApiClient : ISynchronousClient, IAsynchronousClient
                 : "null";
             _logger.LogDebug("Status Code: {code}\nHeaders: {headers}\nBody: {body}", response.StatusCode,
                 headers, response.Content);
+
+            // A 401 says the token just sent is no longer accepted, whatever lifetime it was issued with.
+            // Dropping its deadline means the next request fetches a fresh one instead of replaying a
+            // dead token until the deadline lapses. A 403 is deliberately left alone: this API uses it
+            // for a caller that is authenticated but not permitted, whose token is perfectly good
+            if (response.StatusCode == HttpStatusCode.Unauthorized
+                && configuration.Authenticator is OAuthAuthenticator authenticator)
+            {
+                _logger.LogWarning("Access token rejected with HTTP 401; the cached token will be refreshed");
+                authenticator.Invalidate();
+            }
         }
     }
 
@@ -541,7 +553,8 @@ public class ApiClient : ISynchronousClient, IAsynchronousClient
     /// and what the README tells integrators to catch. The exceptions the policy retries on —
     /// <see cref="BlinkRetryableException"/> and the transport failures — sit outside that hierarchy,
     /// so they are wrapped once the policy gives up, keeping the original as the inner exception.
-    /// Cancellation is passed through untouched, since callers await it themselves.
+    /// Cancellation is passed through untouched, since callers await it themselves. The path taken
+    /// when no policy is installed wraps the same way, through <see cref="WrapForCaller"/>.
     /// </para>
     /// </summary>
     /// <param name="policyResult">The outcome reported by the retry policy.</param>
@@ -571,8 +584,22 @@ public class ApiClient : ISynchronousClient, IAsynchronousClient
             ExceptionDispatchInfo.Capture(finalException).Throw();
         }
 
-        throw new BlinkServiceException($"Request to {request.Resource} failed: {finalException.Message}",
-            finalException);
+        throw WrapForCaller(finalException, request);
+    }
+
+    /// <summary>
+    /// Presents a failure as the exception the caller is told to expect. Both execution paths use this,
+    /// so the guarantee does not depend on whether a retry policy happens to be installed.
+    /// </summary>
+    /// <param name="exception">The failure to present.</param>
+    /// <param name="request">The request being executed, for logging.</param>
+    /// <returns>The exception to throw.</returns>
+    private BlinkServiceException WrapForCaller(Exception exception, RestRequest request)
+    {
+        _logger.LogError(exception, "Request to {resource} failed", request.Resource);
+
+        return new BlinkServiceException($"Request to {request.Resource} failed: {exception.Message}",
+            exception);
     }
 
     private ApiResponse<T> Exec<T>(RestRequest req, RequestOptions options, IReadableConfiguration configuration)
@@ -614,7 +641,16 @@ public class ApiClient : ISynchronousClient, IAsynchronousClient
         }
         else
         {
-            response = client.Execute<T>(req);
+            // The authenticator throws outside RestSharp's own error handling, so this call can fail
+            // with an exception the caller is not expecting; the retry path wraps it the same way
+            try
+            {
+                response = client.Execute<T>(req);
+            }
+            catch (Exception e) when (e is not BlinkServiceException && e is not OperationCanceledException)
+            {
+                throw WrapForCaller(e, req);
+            }
         }
 
         // if the response type is oneOf/anyOf, call FromJSON to deserialize the data
@@ -642,7 +678,7 @@ public class ApiClient : ISynchronousClient, IAsynchronousClient
             response.Data = (T)(object)response.Content;
         }
 
-        InterceptResponse(response);
+        InterceptResponse(response, configuration);
 
         var result = ToApiResponse(response);
         if (response.ErrorMessage != null)
@@ -710,7 +746,16 @@ public class ApiClient : ISynchronousClient, IAsynchronousClient
         }
         else
         {
-            response = await client.ExecuteAsync<T>(req, cancellationToken).ConfigureAwait(false);
+            // The authenticator throws outside RestSharp's own error handling, so this call can fail
+            // with an exception the caller is not expecting; the retry path wraps it the same way
+            try
+            {
+                response = await client.ExecuteAsync<T>(req, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception e) when (e is not BlinkServiceException && e is not OperationCanceledException)
+            {
+                throw WrapForCaller(e, req);
+            }
         }
 
         // if the response type is oneOf/anyOf, call FromJSON to deserialize the data
@@ -727,7 +772,7 @@ public class ApiClient : ISynchronousClient, IAsynchronousClient
             response.Data = (T)(object)response.RawBytes;
         }
 
-        InterceptResponse(response);
+        InterceptResponse(response, configuration);
 
         var result = ToApiResponse(response);
         if (response.ErrorMessage != null)

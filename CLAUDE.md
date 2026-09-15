@@ -79,8 +79,14 @@ private bool IsTokenExpired()
   credentials, say) becomes a `BlinkServiceException` naming the status. The body never goes into the
   message — it echoes back what was sent, the client ID included
 - `expires_in` is only RECOMMENDED by RFC 6749 section 5.1, so a response missing it falls back to
-  `DefaultExpiresInSeconds` (3600), matching the one-hour tokens BlinkPay issues. Nothing invalidates a
-  cached token early, so a shorter real lifetime would mean 401s until the deadline lapses
+  `DefaultExpiresInSeconds` (3600), matching the one-hour tokens BlinkPay issues
+- **An HTTP 401 from the API invalidates the cached token** (`OAuthAuthenticator.Invalidate()`, called
+  from `ApiClient.InterceptResponse`). It is the only evidence this client gets that a token died
+  before its deadline, so without it a wrong lifetime means 401s until the deadline lapses. Only the
+  deadline is dropped, never `Token`, or a caller on the fast path would send an empty Authorization
+  header. A 403 is left alone: this API uses it for a caller that is authenticated but not permitted,
+  whose token is fine. The cost of a genuinely revoked client is bounded at one extra token request
+  per call, since invalidation only ever happens in response to a request the caller made
 - The deadline is measured on the monotonic clock (`Environment.TickCount64`), so a wall-clock
   adjustment cannot extend a token's lifetime
 - **Read the token after the deadline, write it before.** The fast path must call `IsTokenExpired()`
@@ -376,7 +382,9 @@ Map to specific exception:
   README tells integrators to catch it, but `BlinkRetryableException`, `SocketException`,
   `WebException` and `HttpRequestException` — the four the policy retries on — all sit outside that
   hierarchy, so they are wrapped once the policy gives up, with the original as the inner exception.
-  Cancellation passes through untouched.
+  Cancellation passes through untouched. **Both execution paths wrap** (`ApiClient.WrapForCaller`):
+  the guarantee cannot depend on a policy being installed, because `RetryEnabled` can be false and a
+  client built from an existing `ApiClient` never installs one.
 - A policy configured with `OrResult` can also give up on a handled *response*; that one carries a
   status code, so it goes to the exception factory rather than being thrown directly.
 - Centralized exception factory

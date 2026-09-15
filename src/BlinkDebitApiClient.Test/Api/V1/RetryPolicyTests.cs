@@ -27,6 +27,7 @@ using BlinkDebitApiClient.Client;
 using BlinkDebitApiClient.Client.Auth;
 using BlinkDebitApiClient.Config;
 using BlinkDebitApiClient.Exceptions;
+using System.Net.Http;
 using Microsoft.Extensions.Logging;
 using Polly;
 using RestSharp;
@@ -177,7 +178,31 @@ public class RetryPolicyTests : IDisposable
 
         var exception = await Assert.ThrowsAsync<BlinkServiceException>(() => client.GetMetaAsync());
 
-        Assert.IsNotType<BlinkServiceException>(exception.InnerException);
-        Assert.IsAssignableFrom<Exception>(exception.InnerException);
+        Assert.IsAssignableFrom<HttpRequestException>(exception.InnerException);
+    }
+
+    [Fact(DisplayName = "A failure outside the Blink hierarchy is wrapped with no retry policy installed too")]
+    public async Task ForeignFailureIsWrappedWithoutARetryPolicy()
+    {
+        // The guarantee must not depend on the retry policy: RetryEnabled is a supported setting, and
+        // a client built from an existing ApiClient never installs a policy in the first place
+        RetryConfiguration.RetryPolicy = null;
+        RetryConfiguration.AsyncRetryPolicy = null;
+
+        var configuration = new Configuration
+        {
+            BasePath = "http://127.0.0.1:1/payments/v1",
+            OAuthTokenUrl = "http://127.0.0.1:1/oauth2/token",
+            OAuthClientId = "test-client-id",
+            OAuthClientSecret = "test-client-secret",
+            OAuthFlow = OAuthFlow.APPLICATION,
+            RetryEnabled = false
+        };
+
+        var client = new BlinkDebitClient(_logger, new ApiClient(_logger, configuration), configuration);
+
+        var exception = await Assert.ThrowsAsync<BlinkServiceException>(() => client.GetMetaAsync());
+
+        Assert.IsAssignableFrom<HttpRequestException>(exception.InnerException);
     }
 }

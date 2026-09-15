@@ -133,6 +133,21 @@ public class OAuthAuthenticator : AuthenticatorBase, IDisposable
     }
 
     /// <summary>
+    /// Marks the cached token as expired, so that the next request fetches a fresh one. Called when the
+    /// API rejects the credential the token represents, which is the only evidence this client gets that
+    /// a token died before the deadline it was given.
+    /// <para>
+    /// Only the deadline is dropped, never <see cref="AuthenticatorBase.Token"/> itself: a caller on the
+    /// fast path would otherwise attach an empty Authorization header. Zeroing the deadline sends it
+    /// down the slow path instead, where the semaphore collapses concurrent callers into one refresh.
+    /// </para>
+    /// </summary>
+    public void Invalidate()
+    {
+        Interlocked.Exchange(ref _tokenExpiryMillis, 0);
+    }
+
+    /// <summary>
     /// Checks if the token has expired or is about to expire, against the deadline recorded when the
     /// token was fetched. The deadline comes from the OAuth2 token response rather than from the
     /// token itself: the access token is opaque to this client and its claims are unverified here.
@@ -149,7 +164,14 @@ public class OAuthAuthenticator : AuthenticatorBase, IDisposable
     /// <returns>The authentication token and the monotonic deadline at which it must be refreshed.</returns>
     private async Task<(string Token, long ExpiryMillis)> GetToken()
     {
-        using var client = new RestClient(_tokenUrl,
+        // The configured timeout applies here as it does to every other request: RestSharp would
+        // otherwise fall back to its own default, and a token fetch could outlast the caller's budget
+        var clientOptions = new RestClientOptions(_tokenUrl)
+        {
+            Timeout = TimeSpan.FromMilliseconds(_configuration.Timeout)
+        };
+
+        using var client = new RestClient(clientOptions,
             configureSerialization: s => s.UseSerializer(() => new CustomJsonCodec(_serializerSettings, _configuration)));
 
         var request = new RestRequest()
@@ -157,12 +179,17 @@ public class OAuthAuthenticator : AuthenticatorBase, IDisposable
             .AddParameter("client_id", _clientId)
             .AddParameter("client_secret", _clientSecret);
         var response = await client.ExecutePostAsync<TokenResponse>(request).ConfigureAwait(false);
-        if (response.StatusCode == 0 && response.ErrorException != null)
+        if (response.StatusCode == 0)
         {
-            // No status code means the server never answered. The exception is rethrown as it stands,
+            // No status code means the server never answered. Any exception is rethrown as it stands,
             // because the retry policy handles the transport failures by type and would stop
             // recognising them behind a wrapper; it is only wrapped once the policy gives up on it
-            ExceptionDispatchInfo.Capture(response.ErrorException).Throw();
+            if (response.ErrorException != null)
+            {
+                ExceptionDispatchInfo.Capture(response.ErrorException).Throw();
+            }
+
+            throw new BlinkServiceException($"OAuth2 token request to {_tokenUrl} got no response");
         }
 
         if (!response.IsSuccessStatusCode)

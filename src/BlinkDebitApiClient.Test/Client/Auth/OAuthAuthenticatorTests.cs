@@ -24,9 +24,12 @@ using System;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
+using BlinkDebitApiClient.Api.V1;
+using BlinkDebitApiClient.Client;
 using BlinkDebitApiClient.Client.Auth;
 using BlinkDebitApiClient.Config;
 using BlinkDebitApiClient.Exceptions;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using RestSharp;
 using WireMock.RequestBuilders;
@@ -168,6 +171,50 @@ public class OAuthAuthenticatorTests : IDisposable
 
         Assert.All(tokens, token => Assert.Equal("Bearer test-token", token));
         Assert.Equal(1, TokenRequestCount);
+    }
+
+    [Fact(DisplayName = "An invalidated token is refetched on the next request")]
+    public async Task InvalidatedTokenIsRefetched()
+    {
+        StubToken("{\"token_type\":\"Bearer\",\"access_token\":\"test-token\",\"expires_in\":3600}");
+        using var authenticator = CreateAuthenticator();
+
+        await AuthenticateAsync(authenticator);
+        authenticator.Invalidate();
+        await AuthenticateAsync(authenticator);
+
+        // Without the invalidation the hour-long deadline would have kept the first token in use
+        Assert.Equal(2, TokenRequestCount);
+    }
+
+    [Fact(DisplayName = "An API response of 401 invalidates the cached token")]
+    public async Task UnauthorisedResponseInvalidatesTheCachedToken()
+    {
+        StubToken("{\"token_type\":\"Bearer\",\"access_token\":\"test-token\",\"expires_in\":3600}");
+        _tokenServer.Given(Request.Create().WithPath("/payments/v1/meta").UsingGet())
+            .RespondWith(Response.Create()
+                .WithStatusCode(HttpStatusCode.Unauthorized)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("{\"message\":\"invalid token\"}"));
+
+        var configuration = new Configuration
+        {
+            BasePath = _tokenServer.Url + "/payments/v1",
+            OAuthTokenUrl = _tokenServer.Url + TokenPath,
+            OAuthClientId = "test-client-id",
+            OAuthClientSecret = "test-client-secret",
+            OAuthFlow = OAuthFlow.APPLICATION,
+            RetryEnabled = false
+        };
+
+        var logger = LoggerFactory.Create(builder => builder.AddDebug()).CreateLogger<OAuthAuthenticatorTests>();
+        var client = new BlinkDebitClient(logger, new ApiClient(logger, configuration), configuration);
+
+        await Assert.ThrowsAnyAsync<BlinkServiceException>(() => client.GetMetaAsync());
+        await Assert.ThrowsAnyAsync<BlinkServiceException>(() => client.GetMetaAsync());
+
+        // The rejected token is not replayed for the rest of its nominal hour: the second call fetches
+        Assert.Equal(2, TokenRequestCount);
     }
 
     private int TokenRequestCount =>
