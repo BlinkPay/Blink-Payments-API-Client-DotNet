@@ -77,6 +77,12 @@
           "Microsoft.TestPlatform.TestHost": "18.10.0"
         }
       },
+      "SharpYaml": {
+        "type": "Direct",
+        "requested": "[2.1.5, )",
+        "resolved": "2.1.5",
+        "contentHash": "1pNSpfXxNAgCQ9sacKKpEWO2DxTefoLEjw0v1nWMvyJScUWacoHvjXr4LfcUkhm0qYgNYripFFiUeEzW4tdXIQ=="
+      },
       "WireMock.Net": {
         "type": "Direct",
         "requested": "[2.15.0, )",
@@ -1167,11 +1173,6 @@
         "resolved": "7.2.5",
         "contentHash": "Fu1AjcAyrZIAW9LIhxVgVyo5EMVdwLhXagKKI2A1UZoI0Wvz2CiRT+VXp1tuiMq2JhlkjVyebj/JQcF4koZacg=="
       },
-      "SharpYaml": {
-        "type": "Transitive",
-        "resolved": "2.1.4",
-        "contentHash": "/iwULhVBpTjD4wPZhLU+eUWBanDvri/2AGx5YbaAj5kp9kXzhqUfJEy56H5Yi+c+OXsdm/oKD1aTKB24BFp8cw=="
-      },
       "SimMetrics.Net": {
         "type": "Transitive",
         "resolved": "1.0.5",
@@ -1463,6 +1464,12 @@
           "Microsoft.CodeCoverage": "18.10.0",
           "Microsoft.TestPlatform.TestHost": "18.10.0"
         }
+      },
+      "SharpYaml": {
+        "type": "Direct",
+        "requested": "[2.1.5, )",
+        "resolved": "2.1.5",
+        "contentHash": "1pNSpfXxNAgCQ9sacKKpEWO2DxTefoLEjw0v1nWMvyJScUWacoHvjXr4LfcUkhm0qYgNYripFFiUeEzW4tdXIQ=="
       },
       "WireMock.Net": {
         "type": "Direct",
@@ -2558,11 +2565,6 @@
         "type": "Transitive",
         "resolved": "7.2.5",
         "contentHash": "Fu1AjcAyrZIAW9LIhxVgVyo5EMVdwLhXagKKI2A1UZoI0Wvz2CiRT+VXp1tuiMq2JhlkjVyebj/JQcF4koZacg=="
-      },
-      "SharpYaml": {
-        "type": "Transitive",
-        "resolved": "2.1.4",
-        "contentHash": "/iwULhVBpTjD4wPZhLU+eUWBanDvri/2AGx5YbaAj5kp9kXzhqUfJEy56H5Yi+c+OXsdm/oKD1aTKB24BFp8cw=="
       },
       "SimMetrics.Net": {
         "type": "Transitive",

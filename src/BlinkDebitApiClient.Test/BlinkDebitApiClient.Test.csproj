@@ -21,6 +21,13 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="WireMock.Net" Version="2.15.0" />
+    <!--
+      Pins the SharpYaml that WireMock.Net.Minimal -> WireMock.Net.OpenApiParser drags in
+      transitively. 2.1.4 is vulnerable to GHSA-f5r6-g6gp-5xmf (unbounded YAML nesting, DoS);
+      2.1.5 is the patched 2.x. Nothing here parses YAML, so this only keeps the scanners quiet.
+      Drop it once WireMock.Net ships a build that resolves 2.1.5 or later itself.
+    -->
+    <PackageReference Include="SharpYaml" Version="2.1.5" />
     <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
