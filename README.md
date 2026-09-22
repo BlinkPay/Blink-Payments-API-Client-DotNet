@@ -356,6 +356,10 @@ An optional request ID, correlation ID and idempotency key can be added as argum
 
 A request can have one request ID and one idempotency key but multiple correlation IDs in case of retries.
 
+The idempotency key is what makes a retried creation safe, so it is worth supplying your own whenever
+your application — rather than the SDK — is the one retrying. See [Refund idempotency](#idempotency)
+for the rules that apply to `POST /refunds`; consent and payment creation take the same header.
+
 ## Full Examples
 > **Note:** For error handling, a BlinkServiceException can be caught.
 ### Quick payment (one-off payment), using Gateway flow
@@ -722,6 +726,34 @@ var request = new PartialRefundRequest(paymentId, amount pcr, redirectUri);
 
 var refundResponse = await client.CreateRefundAsync(request);
 ```
+#### Idempotency
+All three refund requests above accept an `idempotency-key` header. The SDK generates one per call if
+you omit it, which covers the retries it makes on your behalf — but a key it generated is gone by the
+time a failure reaches you, so a retry your own application makes is a second, unrelated refund. Hold
+your own key and send the same one:
+```csharp
+var request = new AccountNumberRefundRequest(paymentId);
+var requestHeaders = new Dictionary<string, string?>
+{
+    // Store this alongside the refund attempt and reuse it if you retry
+    ["idempotency-key"] = idempotencyKey
+};
+
+var refundResponse = await client.CreateRefundAsync(request, requestHeaders);
+```
+What Blink Debit does with the key on `POST /refunds` (API spec 1.0.60):
+
+| Request | Result |
+| --- | --- |
+| Same key, same payload | The original `201` is replayed, carrying the original `refund_id`. No second refund is created. |
+| Same key, different payload | Rejected with `409` `BP702`. |
+| Same key while the first request is still in flight | Rejected with `409` `BP711`. Retry once the first request settles. |
+| No key | No de-duplication at all — a blind retry refunds the customer twice. |
+
+The SDK's retry policy re-sends the request it already built, so the key is stable across any attempt
+it makes. It does not retry HTTP errors, though — a response only becomes an exception after the
+policy has finished — so a `5xx` reaches you having been sent once. Whether to retry it is your
+decision, and it is the case where holding your own key matters.
 #### Retrieval
 ```csharp
 var refund = await client.GetRefundAsync(refundId);
