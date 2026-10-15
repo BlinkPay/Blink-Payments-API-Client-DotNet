@@ -385,6 +385,11 @@ Map to specific exception:
   Cancellation passes through untouched. **Both execution paths wrap** (`ApiClient.WrapForCaller`):
   the guarantee cannot depend on a policy being installed, because `RetryEnabled` can be false and a
   client built from an existing `ApiClient` never installs one.
+- **A failure RestSharp records on a response is thrown too** (`ApiClient.ThrowRecordedFailure`). RestSharp
+  catches a deserialisation failure and stores it as `ErrorException` instead of raising it, and a 200
+  never reaches the exception factory, so a body that did not fit the model used to come back as null
+  data with no error at all (BDL-2106: a consent in `GatewayAwaitingSubmission` has no
+  `status_updated_timestamp`, which the model wrongly demanded). Error statuses are left to the factory.
 - A policy configured with `OrResult` can also give up on a handled *response*; that one carries a
   status code, so it goes to the exception factory rather than being thrown directly.
 - Centralized exception factory

@@ -83,11 +83,11 @@ public class Refund : IEquatable<Refund>, IValidatableObject
     /// <param name="refundId">The refund ID. (required).</param>
     /// <param name="status">The refund status (required).</param>
     /// <param name="creationTimestamp">The time that the refund was created. (required).</param>
-    /// <param name="statusUpdatedTimestamp">The time that the status was last updated. (required).</param>
+    /// <param name="statusUpdatedTimestamp">The time that the status was last updated, absent while the status has never changed.</param>
     /// <param name="accountNumber">The customer account number used or to be used for the refund. (required).</param>
     /// <param name="detail">detail (required).</param>
     public Refund(Guid refundId = default(Guid), StatusEnum status = default(StatusEnum),
-        DateTimeOffset creationTimestamp = default(DateTimeOffset), DateTimeOffset statusUpdatedTimestamp = default(DateTimeOffset),
+        DateTimeOffset creationTimestamp = default(DateTimeOffset), DateTimeOffset? statusUpdatedTimestamp = default(DateTimeOffset?),
         string accountNumber = default(string), RefundRequest detail = default(RefundRequest))
     {
         RefundId = refundId;
@@ -120,9 +120,9 @@ public class Refund : IEquatable<Refund>, IValidatableObject
     /// <summary>
     /// The time that the status was last updated.
     /// </summary>
-    /// <value>The time that the status was last updated.</value>
-    [DataMember(Name = "status_updated_timestamp", IsRequired = true, EmitDefaultValue = true)]
-    public DateTimeOffset StatusUpdatedTimestamp { get; set; }
+    /// <value>The time that the status was last updated, absent while the status has never changed</value>
+    [DataMember(Name = "status_updated_timestamp", EmitDefaultValue = false)]
+    public DateTimeOffset? StatusUpdatedTimestamp { get; set; }
 
     /// <summary>
     /// The customer account number used or to be used for the refund.

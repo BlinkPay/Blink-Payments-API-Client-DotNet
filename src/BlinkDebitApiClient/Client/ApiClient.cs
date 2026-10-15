@@ -599,6 +599,27 @@ public class ApiClient : ISynchronousClient, IAsynchronousClient
             exception);
     }
 
+    /// <summary>
+    /// Throws the failure RestSharp recorded on a response instead of raising: a body that would not
+    /// deserialise into the model, or, with no retry policy installed, a transport fault. Neither
+    /// carries an error status, and the exception factory only translates statuses of 400 and above,
+    /// so without this the operation would hand back null data as though the call had succeeded.
+    /// An error status is left to the factory: anything recorded on it is at most the error body
+    /// failing to fit the success model.
+    /// </summary>
+    /// <param name="response">The response to inspect.</param>
+    /// <param name="request">The request being executed, for logging.</param>
+    /// <exception cref="BlinkServiceException">Thrown when a failure was recorded on a non-error response.</exception>
+    private void ThrowRecordedFailure(RestResponse response, RestRequest request)
+    {
+        if (response.ErrorException == null || (int)response.StatusCode >= 400)
+        {
+            return;
+        }
+
+        throw WrapForCaller(response.ErrorException, request);
+    }
+
     private ApiResponse<T> Exec<T>(RestRequest req, RequestOptions options, IReadableConfiguration configuration)
     {
         var baseUrl = configuration.GetOperationServerUrl(options.Operation, options.OperationIndex) ?? _baseUrl;
@@ -649,6 +670,8 @@ public class ApiClient : ISynchronousClient, IAsynchronousClient
                 throw WrapForCaller(e, req);
             }
         }
+
+        ThrowRecordedFailure(response, req);
 
         // if the response type is oneOf/anyOf, call FromJSON to deserialize the data
         if (typeof(AbstractOpenAPISchema).IsAssignableFrom(typeof(T)))
@@ -754,6 +777,8 @@ public class ApiClient : ISynchronousClient, IAsynchronousClient
                 throw WrapForCaller(e, req);
             }
         }
+
+        ThrowRecordedFailure(response, req);
 
         // if the response type is oneOf/anyOf, call FromJSON to deserialize the data
         if (typeof(AbstractOpenAPISchema).IsAssignableFrom(typeof(T)))
