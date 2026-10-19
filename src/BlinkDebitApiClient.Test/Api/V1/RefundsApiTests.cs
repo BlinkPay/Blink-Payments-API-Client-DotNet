@@ -153,7 +153,7 @@ public class RefundsApiTests : IDisposable
         Assert.StartsWith("99-", refund.AccountNumber);
         Assert.EndsWith("-00", refund.AccountNumber);
         Assert.NotEqual(DateTimeOffset.MinValue, refund.CreationTimestamp);
-        Assert.NotEqual(DateTimeOffset.MinValue, refund.StatusUpdatedTimestamp);
+        Assert.NotNull(refund.StatusUpdatedTimestamp);
         refundRequest = refund.Detail.GetAccountNumberRefundRequest();
         Assert.Equal(paymentId, refundRequest.PaymentId);
         Assert.Equal(RefundDetail.TypeEnum.AccountNumber, refundRequest.Type);
@@ -229,7 +229,7 @@ public class RefundsApiTests : IDisposable
         Assert.StartsWith("99-", refund.AccountNumber);
         Assert.EndsWith("-00", refund.AccountNumber);
         Assert.NotEqual(DateTimeOffset.MinValue, refund.CreationTimestamp);
-        Assert.NotEqual(DateTimeOffset.MinValue, refund.StatusUpdatedTimestamp);
+        Assert.NotNull(refund.StatusUpdatedTimestamp);
         refundRequest = refund.Detail.GetAccountNumberRefundRequest();
         Assert.Equal(paymentId, refundRequest.PaymentId);
         Assert.Equal(RefundDetail.TypeEnum.AccountNumber, refundRequest.Type);

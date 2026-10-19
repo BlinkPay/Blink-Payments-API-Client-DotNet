@@ -599,6 +599,45 @@ public class ApiClient : ISynchronousClient, IAsynchronousClient
             exception);
     }
 
+    /// <summary>
+    /// Throws the failure RestSharp recorded on a response instead of raising: a body that would not
+    /// deserialise into the model, or a transport fault. Neither carries an error status, and the
+    /// exception factory only translates statuses of 400 and above, so without this the operation
+    /// would hand back null data as though the call had succeeded. A retry policy does not see these
+    /// either, since RestSharp hands back a response rather than throwing, so this guard runs on both
+    /// execution paths. An error status is left to the factory: anything recorded on it is at most the
+    /// error body failing to fit the success model.
+    /// <para>
+    /// The failure is presented under the same rule as <see cref="ResolvePolicyOutcome"/>: a
+    /// <see cref="BlinkServiceException"/> (the codec records a deserialisation failure as one) and a
+    /// cancellation the caller asked for are rethrown as they are, anything else is wrapped. RestSharp
+    /// records its own timeout as a cancellation too, but under <see cref="ResponseStatus.TimedOut"/>
+    /// rather than <see cref="ResponseStatus.Aborted"/>, and the caller did not ask for that one, so it
+    /// is wrapped like any other transport fault.
+    /// </para>
+    /// </summary>
+    /// <param name="response">The response to inspect.</param>
+    /// <param name="request">The request being executed, for logging.</param>
+    /// <exception cref="BlinkServiceException">Thrown when a failure was recorded on a non-error response.</exception>
+    /// <exception cref="OperationCanceledException">Thrown when the caller cancelled the request.</exception>
+    private void ThrowRecordedFailure(RestResponse response, RestRequest request)
+    {
+        var failure = response.ErrorException;
+        if (failure == null || (int)response.StatusCode >= 400)
+        {
+            return;
+        }
+
+        var cancelledByCaller = failure is OperationCanceledException &&
+                                response.ResponseStatus == ResponseStatus.Aborted;
+        if (cancelledByCaller || failure is BlinkServiceException)
+        {
+            ExceptionDispatchInfo.Capture(failure).Throw();
+        }
+
+        throw WrapForCaller(failure, request);
+    }
+
     private ApiResponse<T> Exec<T>(RestRequest req, RequestOptions options, IReadableConfiguration configuration)
     {
         var baseUrl = configuration.GetOperationServerUrl(options.Operation, options.OperationIndex) ?? _baseUrl;
@@ -649,6 +688,8 @@ public class ApiClient : ISynchronousClient, IAsynchronousClient
                 throw WrapForCaller(e, req);
             }
         }
+
+        ThrowRecordedFailure(response, req);
 
         // if the response type is oneOf/anyOf, call FromJSON to deserialize the data
         if (typeof(AbstractOpenAPISchema).IsAssignableFrom(typeof(T)))
@@ -754,6 +795,8 @@ public class ApiClient : ISynchronousClient, IAsynchronousClient
                 throw WrapForCaller(e, req);
             }
         }
+
+        ThrowRecordedFailure(response, req);
 
         // if the response type is oneOf/anyOf, call FromJSON to deserialize the data
         if (typeof(AbstractOpenAPISchema).IsAssignableFrom(typeof(T)))

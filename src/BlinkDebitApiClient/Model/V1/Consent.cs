@@ -105,12 +105,12 @@ public class Consent : IEquatable<Consent>, IValidatableObject
     /// <param name="consentId">The consent ID (required).</param>
     /// <param name="status">The status of the consent (required).</param>
     /// <param name="creationTimestamp">The timestamp that the consent was created (required).</param>
-    /// <param name="statusUpdatedTimestamp">The time that the status was last updated (required).</param>
+    /// <param name="statusUpdatedTimestamp">The time that the status was last updated, absent while the status has never changed.</param>
     /// <param name="detail">detail (required).</param>
     /// <param name="payments">Payments associated with this consent, if any. (required).</param>
     public Consent(Guid consentId = default(Guid), StatusEnum status = default(StatusEnum),
         DateTimeOffset creationTimestamp = default(DateTimeOffset),
-        DateTimeOffset statusUpdatedTimestamp = default(DateTimeOffset),
+        DateTimeOffset? statusUpdatedTimestamp = default(DateTimeOffset?),
         ConsentDetail detail = default(ConsentDetail),
         List<Payment> payments = default(List<Payment>),
         CardNetwork cardNetwork = default(CardNetwork))
@@ -146,9 +146,9 @@ public class Consent : IEquatable<Consent>, IValidatableObject
     /// <summary>
     /// The time that the status was last updated
     /// </summary>
-    /// <value>The time that the status was last updated</value>
-    [DataMember(Name = "status_updated_timestamp", IsRequired = true, EmitDefaultValue = true)]
-    public DateTimeOffset StatusUpdatedTimestamp { get; set; }
+    /// <value>The time that the status was last updated, absent while the status has never changed</value>
+    [DataMember(Name = "status_updated_timestamp", EmitDefaultValue = false)]
+    public DateTimeOffset? StatusUpdatedTimestamp { get; set; }
 
     /// <summary>
     /// Gets or Sets Detail

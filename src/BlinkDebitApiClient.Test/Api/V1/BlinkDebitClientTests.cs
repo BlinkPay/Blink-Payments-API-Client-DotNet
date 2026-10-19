@@ -600,7 +600,7 @@ public class BlinkDebitClientTests : IDisposable
 
             Assert.Empty(payment.Refunds);
             Assert.NotEqual(DateTimeOffset.MinValue, payment.CreationTimestamp);
-            Assert.NotEqual(DateTimeOffset.MinValue, payment.StatusUpdatedTimestamp);
+            Assert.NotNull(payment.StatusUpdatedTimestamp);
             var paymentDetail = payment.Detail;
             Assert.NotNull(paymentDetail);
             Assert.Equal(quickPaymentId, paymentDetail.ConsentId);
@@ -732,7 +732,7 @@ public class BlinkDebitClientTests : IDisposable
 
             Assert.Empty(payment.Refunds);
             Assert.NotEqual(DateTimeOffset.MinValue, payment.CreationTimestamp);
-            Assert.NotEqual(DateTimeOffset.MinValue, payment.StatusUpdatedTimestamp);
+            Assert.NotNull(payment.StatusUpdatedTimestamp);
             var paymentDetail = payment.Detail;
             Assert.NotNull(paymentDetail);
             Assert.Equal(quickPaymentId, paymentDetail.ConsentId);
@@ -918,7 +918,7 @@ public class BlinkDebitClientTests : IDisposable
         Assert.Equal(Payment.AcceptedReasonEnum.SourceBankPaymentSent, payment.AcceptedReason);
         Assert.Empty(payment.Refunds);
         Assert.NotEqual(DateTimeOffset.MinValue, payment.CreationTimestamp);
-        Assert.NotEqual(DateTimeOffset.MinValue, payment.StatusUpdatedTimestamp);
+        Assert.NotNull(payment.StatusUpdatedTimestamp);
         var paymentDetail = payment.Detail;
         Assert.NotNull(paymentDetail);
         Assert.Equal(consentId, paymentDetail.ConsentId);
@@ -1081,7 +1081,7 @@ public class BlinkDebitClientTests : IDisposable
         Assert.Equal(Payment.AcceptedReasonEnum.SourceBankPaymentSent, payment.AcceptedReason);
         Assert.Empty(payment.Refunds);
         Assert.NotEqual(DateTimeOffset.MinValue, payment.CreationTimestamp);
-        Assert.NotEqual(DateTimeOffset.MinValue, payment.StatusUpdatedTimestamp);
+        Assert.NotNull(payment.StatusUpdatedTimestamp);
         var paymentDetail = payment.Detail;
         Assert.NotNull(paymentDetail);
         Assert.Equal(consentId, paymentDetail.ConsentId);

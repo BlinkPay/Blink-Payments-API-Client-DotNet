@@ -139,7 +139,7 @@ public class PaymentsApiTests : IDisposable
         Assert.Equal(Payment.AcceptedReasonEnum.SourceBankPaymentSent, payment.AcceptedReason);
         Assert.Empty(payment.Refunds);
         Assert.NotEqual(DateTimeOffset.MinValue, payment.CreationTimestamp);
-        Assert.NotEqual(DateTimeOffset.MinValue, payment.StatusUpdatedTimestamp);
+        Assert.NotNull(payment.StatusUpdatedTimestamp);
         var detail = payment.Detail;
         Assert.NotNull(detail);
         Assert.Equal(consentId, detail.ConsentId);
@@ -207,7 +207,7 @@ public class PaymentsApiTests : IDisposable
         Assert.Equal(Payment.AcceptedReasonEnum.SourceBankPaymentSent, payment.AcceptedReason);
         Assert.Empty(payment.Refunds);
         Assert.NotEqual(DateTimeOffset.MinValue, payment.CreationTimestamp);
-        Assert.NotEqual(DateTimeOffset.MinValue, payment.StatusUpdatedTimestamp);
+        Assert.NotNull(payment.StatusUpdatedTimestamp);
         var detail = payment.Detail;
         Assert.NotNull(detail);
         Assert.Equal(consentId, detail.ConsentId);
