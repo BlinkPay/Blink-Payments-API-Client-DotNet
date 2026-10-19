@@ -22,6 +22,7 @@
 
 using System;
 using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
 using BlinkDebitApiClient.Api.V1;
 using BlinkDebitApiClient.Client;
@@ -46,6 +47,8 @@ namespace BlinkDebitApiClient.Test.Api.V1;
 /// an exception, never as null. A merchant found the gap on a quick payment whose customer had left the
 /// gateway page before choosing a bank — a consent that has never changed status carries no
 /// <c>status_updated_timestamp</c>, the model demanded one, and the SDK returned null without a word.
+/// Cancellation is pinned alongside, since RestSharp records a caller's cancellation on the response
+/// the same way and it must not be mistaken for a failure.
 /// <para>
 /// Joins the integration collection because <see cref="RetryConfiguration"/> holds the retry policies in
 /// process-wide static state: the retry case below swaps one in, and the collection stops other tests
@@ -125,10 +128,29 @@ public class SuccessResponseBodyTests : IDisposable
 
         var client = CreateClient(retryEnabled);
 
-        var exception = await Assert.ThrowsAsync<BlinkServiceException>(() =>
+        // The codec records the failure as a BlinkInternalServerErrorException, which is thrown as it is
+        var exception = await Assert.ThrowsAnyAsync<BlinkServiceException>(() =>
             client.GetQuickPaymentAsync(QuickPaymentId));
 
         Assert.Contains("consent", exception.Message);
+    }
+
+    [Theory(DisplayName = "A request the caller cancels mid-flight surfaces the cancellation, not a service exception")]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CancellationByCallerIsNotWrapped(bool retryEnabled)
+    {
+        // Long enough that the token fires while the request is in flight, well before the client's
+        // timeout, but no longer: the stub finishes serving the reply before it will shut down
+        StubQuickPayment(GatewayAwaitingSubmissionBody, TimeSpan.FromSeconds(2));
+
+        // The facade exposes no cancellation token, so this goes through the operation API beneath it
+        var (configuration, apiClient) = CreateApiClient(retryEnabled);
+        var api = new QuickPaymentsApi(_logger, apiClient, apiClient, configuration);
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            api.GetQuickPaymentAsync(QuickPaymentId, cancellationToken: cancellation.Token));
     }
 
     /// <summary>
@@ -138,6 +160,13 @@ public class SuccessResponseBodyTests : IDisposable
     /// fires: what it exercises is the execution path that deserialises outside RestSharp's own call.
     /// </summary>
     private BlinkDebitClient CreateClient(bool retryEnabled)
+    {
+        var (configuration, apiClient) = CreateApiClient(retryEnabled);
+
+        return new BlinkDebitClient(_logger, apiClient, configuration);
+    }
+
+    private (Configuration Configuration, ApiClient ApiClient) CreateApiClient(bool retryEnabled)
     {
         if (retryEnabled)
         {
@@ -156,15 +185,21 @@ public class SuccessResponseBodyTests : IDisposable
             RetryEnabled = retryEnabled
         };
 
-        return new BlinkDebitClient(_logger, new ApiClient(_logger, configuration), configuration);
+        return (configuration, new ApiClient(_logger, configuration));
     }
 
-    private void StubQuickPayment(string body)
+    private void StubQuickPayment(string body, TimeSpan? delay = null)
     {
-        _server.Given(Request.Create().WithPath(QuickPaymentPath).UsingGet())
-            .RespondWith(Response.Create()
-                .WithStatusCode(HttpStatusCode.OK)
-                .WithHeader("Content-Type", "application/json")
-                .WithBody(body));
+        var response = Response.Create()
+            .WithStatusCode(HttpStatusCode.OK)
+            .WithHeader("Content-Type", "application/json")
+            .WithBody(body);
+
+        if (delay.HasValue)
+        {
+            response = response.WithDelay(delay.Value);
+        }
+
+        _server.Given(Request.Create().WithPath(QuickPaymentPath).UsingGet()).RespondWith(response);
     }
 }

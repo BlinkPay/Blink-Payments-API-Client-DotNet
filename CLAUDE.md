@@ -390,6 +390,11 @@ Map to specific exception:
   never reaches the exception factory, so a body that did not fit the model used to come back as null
   data with no error at all (BDL-2106: a consent in `GatewayAwaitingSubmission` has no
   `status_updated_timestamp`, which the model wrongly demanded). Error statuses are left to the factory.
+  The same rule as the policy outcome applies to what is thrown: a `BlinkServiceException` and a
+  caller's cancellation go out as they are, anything else is wrapped. RestSharp does not throw when the
+  caller's token fires mid-request either; it records the cancellation under `ResponseStatus.Aborted`,
+  which is how it is told apart from RestSharp's own timeout (`TimedOut`, also a cancellation), which
+  the caller did not ask for and so is wrapped.
 - A policy configured with `OrResult` can also give up on a handled *response*; that one carries a
   status code, so it goes to the exception factory rather than being thrown directly.
 - Centralized exception factory
