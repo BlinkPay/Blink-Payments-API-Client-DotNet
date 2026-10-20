@@ -5,26 +5,29 @@
     <RootNamespace>BlinkDebitApiClient.Test</RootNamespace>
     <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
     <IsPackable>false</IsPackable>
+    <!-- xunit.v3 test projects are executables: the runner is linked into the assembly rather than hosted. -->
+    <OutputType>Exe</OutputType>
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
     <Nullable>annotations</Nullable>
+    <!--
+      xUnit1051 asks every call that accepts a CancellationToken to pass TestContext.Current.CancellationToken.
+      The generated *Api operations take an optional token, and the integration tests exercise them without
+      one on purpose: each call is a single request the SDK's own timeout already bounds, and threading a
+      token through them would stop the tests mirroring how integrators call the SDK. The Task.Delay calls in
+      the polling loops do pass the token, since that is where cancelling a run would otherwise stall.
+    -->
+    <NoWarn>$(NoWarn);xUnit1051</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="coverlet.collector" Version="10.1.0">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
+    <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.12.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.13" />
     <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="10.0.13" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.13" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.13" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.13" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
-    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.v3" Version="4.0.2" />
     <PackageReference Include="WireMock.Net" Version="2.19.0" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.1">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>

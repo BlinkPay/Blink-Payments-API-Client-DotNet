@@ -55,11 +55,11 @@ Then run:
 # Full suite
 dotnet test
 
-# With detailed output
-dotnet test --logger "console;verbosity=detailed"
+# With per-test output
+dotnet test --output Detailed
 
-# A specific test class
-dotnet test --filter "FullyQualifiedName~QuickPaymentsApiTests"
+# A specific test class (scope to the project so the other test assembly does not report zero tests)
+dotnet test src/BlinkDebitApiClient.Test --filter-class "*QuickPaymentsApiTests"
 
 # Only the dependency injection extension tests (no credentials required)
 dotnet test src/BlinkDebitApiClient.Extensions.DependencyInjection.Test

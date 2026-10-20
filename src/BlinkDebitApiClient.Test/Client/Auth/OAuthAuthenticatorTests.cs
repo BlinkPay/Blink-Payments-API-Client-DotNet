@@ -95,7 +95,7 @@ public class OAuthAuthenticatorTests : IDisposable
         using var authenticator = CreateAuthenticator();
 
         await AuthenticateAsync(authenticator);
-        await Task.Delay(TimeSpan.FromMilliseconds(2500));
+        await Task.Delay(TimeSpan.FromMilliseconds(2500), TestContext.Current.CancellationToken);
         await AuthenticateAsync(authenticator);
 
         Assert.Equal(2, TokenRequestCount);

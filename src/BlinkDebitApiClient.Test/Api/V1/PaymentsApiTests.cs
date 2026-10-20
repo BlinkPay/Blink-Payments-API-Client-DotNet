@@ -27,7 +27,6 @@ using BlinkDebitApiClient.Api.V1;
 using BlinkDebitApiClient.Enums;
 using BlinkDebitApiClient.Model.V1;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace BlinkDebitApiClient.Test.Api.V1;
 
@@ -123,7 +122,7 @@ public class PaymentsApiTests : IDisposable
             catch (Exception)
             {
                 // sleep incrementally
-                await Task.Delay(2000 * i);
+                await Task.Delay(2000 * i, TestContext.Current.CancellationToken);
             }
         }
 
@@ -191,7 +190,7 @@ public class PaymentsApiTests : IDisposable
             catch (Exception)
             {
                 // sleep incrementally
-                await Task.Delay(2000 * i);
+                await Task.Delay(2000 * i, TestContext.Current.CancellationToken);
             }
         }
 
