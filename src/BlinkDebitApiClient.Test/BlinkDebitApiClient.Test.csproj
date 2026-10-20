@@ -9,14 +9,6 @@
     <OutputType>Exe</OutputType>
     <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
     <Nullable>annotations</Nullable>
-    <!--
-      xUnit1051 asks every call that accepts a CancellationToken to pass TestContext.Current.CancellationToken.
-      The generated *Api operations take an optional token, and the integration tests exercise them without
-      one on purpose: each call is a single request the SDK's own timeout already bounds, and threading a
-      token through them would stop the tests mirroring how integrators call the SDK. The Task.Delay calls in
-      the polling loops do pass the token, since that is where cancelling a run would otherwise stall.
-    -->
-    <NoWarn>$(NoWarn);xUnit1051</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

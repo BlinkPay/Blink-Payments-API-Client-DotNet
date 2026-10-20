@@ -67,6 +67,8 @@ dotnet test src/BlinkDebitApiClient.Extensions.DependencyInjection.Test
 
 Some tests are marked `Skip` because they require manual user authorisation in a browser — these are expected to be skipped.
 
+Microsoft.Testing.Platform sends usage telemetry to Microsoft by default; set `TESTINGPLATFORM_TELEMETRY_OPTOUT=1` to turn it off (CI already does).
+
 ## Minimum Requirements
 - .NET 8 or .NET 10
 
