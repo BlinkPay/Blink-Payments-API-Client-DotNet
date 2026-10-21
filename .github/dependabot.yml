@@ -1,6 +1,9 @@
 version: 2
 updates:
-  # Keeps the SHA-pinned actions in .github/workflows moving; Dependabot updates the SHA and the version comment together
+  # Keeps the major-version tags of the actions in .github/workflows current.
+  # NuGet is deliberately not listed: a dependency bump reaches integrators only when the SDK is tagged,
+  # released and published to NuGet, so dependencies are bumped by hand as part of preparing a release.
+  # Aikido scans the committed packages.lock.json files for vulnerable versions in between.
   - package-ecosystem: github-actions
     directory: /
     schedule:
