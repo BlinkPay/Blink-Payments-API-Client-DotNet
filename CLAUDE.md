@@ -1,6 +1,6 @@
 # CLAUDE.md - BlinkPay .NET SDK Code Knowledge
 
-**Last Updated**: 2026-09-14
+**Last Updated**: 2026-10-20
 **Project**: Blink Debit API Client .NET SDK v1.5.0+
 **Framework**: .NET 8.0 and .NET 10.0 (multi-targeted), C# 12
 
@@ -1047,16 +1047,21 @@ await client.CreateSingleConsentAsync(consentRequest, headers);
 ```bash
 dotnet restore
 dotnet build --configuration Release
-dotnet test --logger "console;verbosity=detailed"
+dotnet test --output Detailed
 ```
+
+Tests run on xunit.v3 over Microsoft.Testing.Platform (opted in through the `test` block of `global.json`),
+so the VSTest flags `--filter`, `--logger` and `--collect` no longer apply. Coverage comes from
+`Microsoft.Testing.Extensions.CodeCoverage` via `dotnet test --coverage --coverage-output-format xml`,
+which writes Visual Studio coverage XML under `TestResults/`.
 
 ### Run Specific Tests
 ```bash
-# README integration tests
-dotnet test --filter "FullyQualifiedName~ReadmeExamplesIntegrationTests"
+# README walkthrough tests
+dotnet test src/BlinkDebitApiClient.Test --filter-class "*ComprehensiveQuickStartTests"
 
 # Specific API tests
-dotnet test --filter "FullyQualifiedName~QuickPaymentsApiTests"
+dotnet test src/BlinkDebitApiClient.Test --filter-class "*QuickPaymentsApiTests"
 ```
 
 ### Set Test Credentials

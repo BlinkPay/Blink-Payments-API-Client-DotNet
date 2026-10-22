@@ -1,0 +1,7 @@
+root = false
+
+# The integration tests call the generated *Api operations without a CancellationToken on purpose: the
+# SDK's own timeout bounds each call, and integrators call it the same way. Scoped so the analyser still
+# applies to unit tests elsewhere in the project.
+[Api/V1/**.cs]
+dotnet_diagnostic.xUnit1051.severity = none

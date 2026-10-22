@@ -43,17 +43,21 @@ jobs:
       - name: Begin Sonar analysis
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: dotnet sonarscanner begin /k:"blink-debit-api-client-dotnet" /o:"blinkpay" /d:sonar.token="$SONAR_TOKEN" /d:sonar.host.url="https://sonarcloud.io" /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml"
+        run: dotnet sonarscanner begin /k:"blink-debit-api-client-dotnet" /o:"blinkpay" /d:sonar.token="$SONAR_TOKEN" /d:sonar.host.url="https://sonarcloud.io" /d:sonar.cs.vscoveragexml.reportsPaths="TestResults/*.xml"
         continue-on-error: true
       - name: Build
         run: dotnet build --configuration Release --no-restore /p:WarningLevel=0
       - name: Test
         # Reuses the Release output above, so coverage is measured against the binaries Sonar analysed.
-        # Runs once per target framework (net8.0 and net10.0).
-        run: dotnet test --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage;Format=opencover" /p:WarningLevel=0
+        # Runs once per target framework (net8.0 and net10.0). global.json opts `dotnet test` into
+        # Microsoft.Testing.Platform, so coverage comes from Microsoft.Testing.Extensions.CodeCoverage
+        # as Visual Studio coverage XML, one file per test assembly per framework under TestResults/.
+        run: dotnet test --configuration Release --no-build --verbosity normal --coverage --coverage-output-format xml /p:WarningLevel=0
         env:
           BLINKPAY_CLIENT_ID: ${{ vars.CLIENT_ID }}
           BLINKPAY_CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          # Microsoft.Testing.Platform telemetry is opt-out
+          TESTINGPLATFORM_TELEMETRY_OPTOUT: 1
       - name: End Sonar analysis
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

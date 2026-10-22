@@ -27,7 +27,6 @@ using BlinkDebitApiClient.Api.V1;
 using BlinkDebitApiClient.Exceptions;
 using BlinkDebitApiClient.Model.V1;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace BlinkDebitApiClient.Test.Api.V1;
 
