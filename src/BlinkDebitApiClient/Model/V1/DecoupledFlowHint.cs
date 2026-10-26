@@ -75,7 +75,7 @@ public class DecoupledFlowHint : FlowHint, IEquatable<DecoupledFlowHint>, IValid
     /// </summary>
     /// <value>The identifier value.</value>
     [DataMember(Name = "identifier_value", IsRequired = true, EmitDefaultValue = true)]
-    public string IdentifierValue { get; set; }
+    public string? IdentifierValue { get; set; }
 
     /// <summary>
     /// Returns the string presentation of the object
