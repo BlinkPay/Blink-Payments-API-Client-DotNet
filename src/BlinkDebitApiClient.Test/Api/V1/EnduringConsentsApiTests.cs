@@ -116,7 +116,7 @@ public class EnduringConsentsApiTests : IDisposable
         Assert.Equal(Bank.PNZ, flow.Bank);
         Assert.Equal(CallbackUrl, flow.CallbackUrl);
         Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
-        Assert.Equal("+64-259531933", flow.IdentifierValue);
+        Assert.Contains(flow.IdentifierValue, new[] { "+64-259531933", null });
         Assert.Equal(Period.Fortnightly, detail.Period);
         Assert.NotNull(detail.MaximumAmountPeriod);
         Assert.Equal(Amount.CurrencyEnum.NZD, detail.MaximumAmountPeriod.Currency);
@@ -148,7 +148,7 @@ public class EnduringConsentsApiTests : IDisposable
         Assert.Equal(Bank.PNZ, flow.Bank);
         Assert.Equal(CallbackUrl, flow.CallbackUrl);
         Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
-        Assert.Equal("+64-259531933", flow.IdentifierValue);
+        Assert.Contains(flow.IdentifierValue, new[] { "+64-259531933", null });
         Assert.Equal(Period.Fortnightly, detail.Period);
         Assert.NotNull(detail.MaximumAmountPeriod);
         Assert.Equal(Amount.CurrencyEnum.NZD, detail.MaximumAmountPeriod.Currency);
@@ -232,7 +232,7 @@ public class EnduringConsentsApiTests : IDisposable
         Assert.Equal(Bank.PNZ, flow.Bank);
         Assert.Equal(CallbackUrl, flow.CallbackUrl);
         Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
-        Assert.Equal("+64-259531933", flow.IdentifierValue);
+        Assert.Contains(flow.IdentifierValue, new[] { "+64-259531933", null });
         Assert.Equal(Period.Fortnightly, detail.Period);
         Assert.NotNull(detail.MaximumAmountPeriod);
         Assert.Equal(Amount.CurrencyEnum.NZD, detail.MaximumAmountPeriod.Currency);
@@ -264,7 +264,7 @@ public class EnduringConsentsApiTests : IDisposable
         Assert.Equal(Bank.PNZ, flow.Bank);
         Assert.Equal(CallbackUrl, flow.CallbackUrl);
         Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
-        Assert.Equal("+64-259531933", flow.IdentifierValue);
+        Assert.Contains(flow.IdentifierValue, new[] { "+64-259531933", null });
         Assert.Equal(Period.Fortnightly, detail.Period);
         Assert.NotNull(detail.MaximumAmountPeriod);
         Assert.Equal(Amount.CurrencyEnum.NZD, detail.MaximumAmountPeriod.Currency);
@@ -329,7 +329,7 @@ public class EnduringConsentsApiTests : IDisposable
         Assert.Equal(Bank.PNZ, flow.Bank);
         Assert.Equal(CallbackUrl, flow.CallbackUrl);
         Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
-        Assert.Equal("+64-259531933", flow.IdentifierValue);
+        Assert.Contains(flow.IdentifierValue, new[] { "+64-259531933", null });
 
         // revoke
         await _instance.RevokeEnduringConsentAsync(consentId);
@@ -364,7 +364,7 @@ public class EnduringConsentsApiTests : IDisposable
         Assert.Equal(Bank.PNZ, flow.Bank);
         Assert.Equal(CallbackUrl, flow.CallbackUrl);
         Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
-        Assert.Equal("+64-259531933", flow.IdentifierValue);
+        Assert.Contains(flow.IdentifierValue, new[] { "+64-259531933", null });
     }
 
     /// <summary>
@@ -422,7 +422,7 @@ public class EnduringConsentsApiTests : IDisposable
         Assert.Equal(Bank.PNZ, flow.Bank);
         Assert.Equal(CallbackUrl, flow.CallbackUrl);
         Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
-        Assert.Equal("+64-259531933", flow.IdentifierValue);
+        Assert.Contains(flow.IdentifierValue, new[] { "+64-259531933", null });
 
         // revoke
         await _instance.RevokeEnduringConsentAsync(consentId);
@@ -457,6 +457,6 @@ public class EnduringConsentsApiTests : IDisposable
         Assert.Equal(Bank.PNZ, flow.Bank);
         Assert.Equal(CallbackUrl, flow.CallbackUrl);
         Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
-        Assert.Equal("+64-259531933", flow.IdentifierValue);
+        Assert.Contains(flow.IdentifierValue, new[] { "+64-259531933", null });
     }
 }

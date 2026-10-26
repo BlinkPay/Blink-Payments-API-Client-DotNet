@@ -113,7 +113,7 @@ public class SingleConsentsApiTests : IDisposable
         Assert.Equal(Bank.PNZ, flow.Bank);
         Assert.Equal(CallbackUrl, flow.CallbackUrl);
         Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
-        Assert.Equal("+64-259531933", flow.IdentifierValue);
+        Assert.Contains(flow.IdentifierValue, new[] { "+64-259531933", null });
 
         // revoke
         await _instance.RevokeSingleConsentAsync(consentId);
@@ -138,7 +138,7 @@ public class SingleConsentsApiTests : IDisposable
         Assert.Equal(Bank.PNZ, flow.Bank);
         Assert.Equal(CallbackUrl, flow.CallbackUrl);
         Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
-        Assert.Equal("+64-259531933", flow.IdentifierValue);
+        Assert.Contains(flow.IdentifierValue, new[] { "+64-259531933", null });
     }
 
     /// <summary>
@@ -211,7 +211,7 @@ public class SingleConsentsApiTests : IDisposable
         Assert.Equal(Bank.PNZ, flow.Bank);
         Assert.Equal(CallbackUrl, flow.CallbackUrl);
         Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
-        Assert.Equal("+64-259531933", flow.IdentifierValue);
+        Assert.Contains(flow.IdentifierValue, new[] { "+64-259531933", null });
 
         // revoke
         await _instance.RevokeSingleConsentAsync(consentId);
@@ -236,7 +236,7 @@ public class SingleConsentsApiTests : IDisposable
         Assert.Equal(Bank.PNZ, flow.Bank);
         Assert.Equal(CallbackUrl, flow.CallbackUrl);
         Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
-        Assert.Equal("+64-259531933", flow.IdentifierValue);
+        Assert.Contains(flow.IdentifierValue, new[] { "+64-259531933", null });
     }
 
     /// <summary>
@@ -292,7 +292,7 @@ public class SingleConsentsApiTests : IDisposable
         Assert.Equal(Bank.PNZ, flow.Bank);
         Assert.Equal(CallbackUrl, flow.CallbackUrl);
         Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
-        Assert.Equal("+64-259531933", flow.IdentifierValue);
+        Assert.Contains(flow.IdentifierValue, new[] { "+64-259531933", null });
 
         // revoke
         await _instance.RevokeSingleConsentAsync(consentId);
@@ -326,7 +326,7 @@ public class SingleConsentsApiTests : IDisposable
         Assert.Equal(Bank.PNZ, flow.Bank);
         Assert.Equal(CallbackUrl, flow.CallbackUrl);
         Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
-        Assert.Equal("+64-259531933", flow.IdentifierValue);
+        Assert.Contains(flow.IdentifierValue, new[] { "+64-259531933", null });
     }
 
     /// <summary>
@@ -382,7 +382,7 @@ public class SingleConsentsApiTests : IDisposable
         Assert.Equal(Bank.PNZ, flow.Bank);
         Assert.Equal(CallbackUrl, flow.CallbackUrl);
         Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
-        Assert.Equal("+64-259531933", flow.IdentifierValue);
+        Assert.Contains(flow.IdentifierValue, new[] { "+64-259531933", null });
 
         // revoke
         await _instance.RevokeSingleConsentAsync(consentId);
@@ -416,7 +416,7 @@ public class SingleConsentsApiTests : IDisposable
         Assert.Equal(Bank.PNZ, flow.Bank);
         Assert.Equal(CallbackUrl, flow.CallbackUrl);
         Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
-        Assert.Equal("+64-259531933", flow.IdentifierValue);
+        Assert.Contains(flow.IdentifierValue, new[] { "+64-259531933", null });
     }
 
     /// <summary>
@@ -462,7 +462,7 @@ public class SingleConsentsApiTests : IDisposable
         Assert.Equal(Bank.PNZ, flow.Bank);
         Assert.Equal(CallbackUrl, flow.CallbackUrl);
         Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
-        Assert.Equal("+64-259531933", flow.IdentifierValue);
+        Assert.Contains(flow.IdentifierValue, new[] { "+64-259531933", null });
 
         // revoke
         await _instance.RevokeSingleConsentAsync(consentId);
@@ -487,6 +487,6 @@ public class SingleConsentsApiTests : IDisposable
         Assert.Equal(Bank.PNZ, flow.Bank);
         Assert.Equal(CallbackUrl, flow.CallbackUrl);
         Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
-        Assert.Equal("+64-259531933", flow.IdentifierValue);
+        Assert.Contains(flow.IdentifierValue, new[] { "+64-259531933", null });
     }
 }

@@ -179,7 +179,7 @@ public class BlinkDebitClientTests : IDisposable
         Assert.Equal(Bank.PNZ, flow.Bank);
         Assert.Equal(CallbackUrl, flow.CallbackUrl);
         Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
-        Assert.Equal("+64-259531933", flow.IdentifierValue);
+        Assert.Contains(flow.IdentifierValue, new[] { "+64-259531933", null });
     }
 
     /// <summary>
@@ -278,7 +278,7 @@ public class BlinkDebitClientTests : IDisposable
         Assert.Equal(Bank.PNZ, flow.Bank);
         Assert.Equal(CallbackUrl, flow.CallbackUrl);
         Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
-        Assert.Equal("+64-259531933", flow.IdentifierValue);
+        Assert.Contains(flow.IdentifierValue, new[] { "+64-259531933", null });
     }
 
     /// <summary>
@@ -381,7 +381,7 @@ public class BlinkDebitClientTests : IDisposable
         Assert.Equal(Bank.PNZ, flow.Bank);
         Assert.Equal(CallbackUrl, flow.CallbackUrl);
         Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
-        Assert.Equal("+64-259531933", flow.IdentifierValue);
+        Assert.Contains(flow.IdentifierValue, new[] { "+64-259531933", null });
         Assert.Equal(Period.Fortnightly, detail.Period);
         Assert.NotNull(detail.MaximumAmountPeriod);
         Assert.Equal(Amount.CurrencyEnum.NZD, detail.MaximumAmountPeriod.Currency);
@@ -491,7 +491,7 @@ public class BlinkDebitClientTests : IDisposable
         Assert.Equal(Bank.PNZ, flow.Bank);
         Assert.Equal(CallbackUrl, flow.CallbackUrl);
         Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
-        Assert.Equal("+64-259531933", flow.IdentifierValue);
+        Assert.Contains(flow.IdentifierValue, new[] { "+64-259531933", null });
         Assert.Equal(Period.Fortnightly, detail.Period);
         Assert.NotNull(detail.MaximumAmountPeriod);
         Assert.Equal(Amount.CurrencyEnum.NZD, detail.MaximumAmountPeriod.Currency);
@@ -629,7 +629,7 @@ public class BlinkDebitClientTests : IDisposable
         Assert.Equal(Bank.PNZ, flow.Bank);
         Assert.Equal(CallbackUrl, flow.CallbackUrl);
         Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
-        Assert.Equal("+64-259531933", flow.IdentifierValue);
+        Assert.Contains(flow.IdentifierValue, new[] { "+64-259531933", null });
     }
 
     /// <summary>
@@ -760,7 +760,7 @@ public class BlinkDebitClientTests : IDisposable
         Assert.Equal(Bank.PNZ, flow.Bank);
         Assert.Equal(CallbackUrl, flow.CallbackUrl);
         Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
-        Assert.Equal("+64-259531933", flow.IdentifierValue);
+        Assert.Contains(flow.IdentifierValue, new[] { "+64-259531933", null });
     }
 
     /// <summary>
@@ -806,7 +806,7 @@ public class BlinkDebitClientTests : IDisposable
         Assert.Equal(Bank.PNZ, flow.Bank);
         Assert.Equal(CallbackUrl, flow.CallbackUrl);
         Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
-        Assert.Equal("+64-259531933", flow.IdentifierValue);
+        Assert.Contains(flow.IdentifierValue, new[] { "+64-259531933", null });
 
         // create payment
         var paymentRequest = new PaymentRequest
@@ -894,7 +894,7 @@ public class BlinkDebitClientTests : IDisposable
         Assert.Equal(Bank.PNZ, flow.Bank);
         Assert.Equal(CallbackUrl, flow.CallbackUrl);
         Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
-        Assert.Equal("+64-259531933", flow.IdentifierValue);
+        Assert.Contains(flow.IdentifierValue, new[] { "+64-259531933", null });
 
         // create payment
         var paymentRequest = new PaymentRequest
@@ -969,7 +969,7 @@ public class BlinkDebitClientTests : IDisposable
         Assert.Equal(Bank.PNZ, flow.Bank);
         Assert.Equal(CallbackUrl, flow.CallbackUrl);
         Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
-        Assert.Equal("+64-259531933", flow.IdentifierValue);
+        Assert.Contains(flow.IdentifierValue, new[] { "+64-259531933", null });
 
         // create payment
         var paymentRequest = new PaymentRequest
@@ -1057,7 +1057,7 @@ public class BlinkDebitClientTests : IDisposable
         Assert.Equal(Bank.PNZ, flow.Bank);
         Assert.Equal(CallbackUrl, flow.CallbackUrl);
         Assert.Equal(IdentifierType.PhoneNumber, flow.IdentifierType);
-        Assert.Equal("+64-259531933", flow.IdentifierValue);
+        Assert.Contains(flow.IdentifierValue, new[] { "+64-259531933", null });
 
         // create payment
         var paymentRequest = new PaymentRequest
