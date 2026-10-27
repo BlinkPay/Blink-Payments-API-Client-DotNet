@@ -71,11 +71,13 @@ public class DecoupledFlowHint : FlowHint, IEquatable<DecoupledFlowHint>, IValid
     }
 
     /// <summary>
-    /// The identifier value.
+    /// The identifier value. Required in requests. In responses it is <c>null</c> once the consent is no longer
+    /// awaiting submission or authorisation (it may already be <c>null</c> once the bank has accepted the request);
+    /// a <c>consent_id</c> reference is always returned.
     /// </summary>
     /// <value>The identifier value.</value>
     [DataMember(Name = "identifier_value", IsRequired = true, EmitDefaultValue = true)]
-    public string IdentifierValue { get; set; }
+    public string? IdentifierValue { get; set; }
 
     /// <summary>
     /// Returns the string presentation of the object

@@ -81,11 +81,13 @@ public class DecoupledFlow : AuthFlowDetail, IEquatable<DecoupledFlow>, IValidat
     }
 
     /// <summary>
-    /// The identifier value.
+    /// The identifier value. Required in requests. In responses it is <c>null</c> once the consent is no longer
+    /// awaiting submission or authorisation (it may already be <c>null</c> once the bank has accepted the request);
+    /// a <c>consent_id</c> reference is always returned.
     /// </summary>
     /// <value>The identifier value.</value>
     [DataMember(Name = "identifier_value", EmitDefaultValue = true)]
-    public string IdentifierValue { get; set; }
+    public string? IdentifierValue { get; set; }
 
     /// <summary>
     /// A callback URL to call once the consent status has been updated using decoupled flow. Blink will also append the &#x60;cid&#x60; (the Consent ID) in an additional URL parameter. This is sent to your api as a GET request and will be retried up to 3 times if 5xx errors are received from your server.
