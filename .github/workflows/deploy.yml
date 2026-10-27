@@ -9,27 +9,37 @@ jobs:
   nuget_push:
     runs-on: ubuntu-latest
     if: github.event.release.target_commitish == 'master'
+    permissions:
+      contents: read
+      # Lets the job mint a GitHub OIDC token, which nuget.org exchanges for a short-lived API key
+      id-token: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Nothing in this job pushes back to the repo, so don't leave the token in .git/config
           persist-credentials: false
       - name: Setup .NET
-        uses: actions/setup-dotnet@v6
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           # Both SDKs: the 10.0 SDK builds every target framework, the 8.0 targeting pack covers net8.0
           dotnet-version: |
             8.0.x
             10.0.x
-          source-url: https://api.nuget.org/v3/index.json
-        env:
-          NUGET_AUTH_TOKEN: ${{ secrets.NUGET_TOKEN }}
       - name: Pack
         run: |
           dotnet restore --locked-mode
           dotnet pack --configuration Release /p:PackageVersion=${{ github.event.release.tag_name }}
+      # Trusted publishing: the OIDC token is checked against the policy on nuget.org
+      # (repository owner, repository and this workflow's file name) and exchanged for an
+      # API key that lives one hour, so it is requested right before the push.
+      - name: NuGet login
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+        id: login
+        with:
+          # The nuget.org profile name of the account that created the policy, not an email address
+          user: ${{ vars.NUGET_USER }}
       - name: Push
         env:
-          NUGET_TOKEN: ${{ secrets.NUGET_TOKEN }}
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
         run:
-          dotnet nuget push "**/*.nupkg" --api-key "$NUGET_TOKEN"
+          dotnet nuget push "**/*.nupkg" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json
