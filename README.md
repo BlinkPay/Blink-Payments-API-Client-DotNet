@@ -21,9 +21,9 @@
 11. [Individual API Call Examples](#individual-api-call-examples)
 
 ## Introduction
-This SDK allows merchants with .NET 8- or .NET 10-based e-commerce sites to seamlessly integrate with Blink PayNow and Blink AutoPay in order to accept digital payments.
+This SDK allows merchants with .NET 10-based e-commerce sites to seamlessly integrate with Blink PayNow and Blink AutoPay in order to accept digital payments.
 
-This SDK is written in C# 12. The language version is pinned in `Directory.Build.props` so that both target frameworks compile identically — see [Minimum Requirements](#minimum-requirements) for the plan to move to C# 14.
+The language version is C# 14, set in `Directory.Build.props`.
 
 ## Contributing
 We welcome contributions from the community. Your pull request will be reviewed by our team.
@@ -33,8 +33,7 @@ This project is licensed under the MIT License.
 ## Building and Testing Locally
 
 ### Prerequisites
-- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) (check with `dotnet --version`) — required to build, as the package targets both `net8.0` and `net10.0`
-- The [.NET 8 runtime](https://dotnet.microsoft.com/download/dotnet/8.0) as well, to run the `net8.0` test pass
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) (check with `dotnet --version`)
 
 ### Compile
 From the repository root:
@@ -70,19 +69,9 @@ Some tests are marked `Skip` because they require manual user authorisation in a
 Microsoft.Testing.Platform sends usage telemetry to Microsoft by default; set `TESTINGPLATFORM_TELEMETRY_OPTOUT=1` to turn it off (CI already does).
 
 ## Minimum Requirements
-- .NET 8 or .NET 10
+- .NET 10
 
-The package multi-targets `net8.0` and `net10.0`, so it can be consumed from either.
-
-### Planned migration to C# 14
-
-[.NET 8 reaches end of life on 10 November 2026](https://dotnet.microsoft.com/platform/support/policy/dotnet-core). The `net8.0` target will be dropped in the next major version after that date, at which point:
-
-1. `<TargetFrameworks>` in each `.csproj` narrows to `net10.0` alone.
-2. `<LangVersion>` in `Directory.Build.props` is raised from `12` to `14`.
-3. The dual-SDK `setup-dotnet` steps in `.github/workflows/` drop back to `10.0.x` only.
-
-Until then the language version stays pinned at C# 12, because that is the highest version the `net8.0` target supports. This is deliberate: without the pin, the language version would default from the target framework (C# 12 for `net8.0`, C# 14 for `net10.0`) and a C# 14 feature would compile on one leg while breaking the other.
+The package targets `net10.0` only. Projects that cannot move to .NET 10 yet can stay on the 1.8.x releases.
 
 ## Adding the dependency
 - If via your IDE, look for `BlinkDebitApiClient` in the NuGet tool
