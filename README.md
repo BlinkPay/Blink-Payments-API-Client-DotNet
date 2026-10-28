@@ -23,7 +23,7 @@
 ## Introduction
 This SDK allows merchants with .NET 10-based e-commerce sites to seamlessly integrate with Blink PayNow and Blink AutoPay in order to accept digital payments.
 
-This SDK is written in C# 14.
+The language version is C# 14, set in `Directory.Build.props`.
 
 ## Contributing
 We welcome contributions from the community. Your pull request will be reviewed by our team.
