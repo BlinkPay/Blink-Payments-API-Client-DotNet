@@ -52,12 +52,12 @@ public class EnduringConsentRequest : ConsentDetail, IEquatable<EnduringConsentR
     /// <param name="expiryTimestamp">The ISO 8601 timeout for when an enduring consent will expire. If this field is blank, an indefinite request will be attempted..</param>
     /// <param name="period">period (required).</param>
     /// <param name="maximumAmountPeriod">maximumAmountPeriod (required).</param>
-    /// <param name="maximumAmountPayment">maximumAmountPayment (required).</param>
+    /// <param name="maximumAmountPayment">The optional per-payment maximum; <c>null</c> for no per-payment maximum.</param>
     /// <param name="hashedCustomerIdentifier">The hashed unique ID of the customer e.g. customer internal ID. SHA-256 is recommended.</param>
     /// <param name="type">Whether the consent is single or enduring. (required).</param>
     public EnduringConsentRequest(AuthFlow flow = default(AuthFlow),
         DateTimeOffset fromTimestamp = default(DateTimeOffset), DateTimeOffset? expiryTimestamp = null,
-        Period period = default(Period), Amount maximumAmountPeriod = default(Amount), Amount maximumAmountPayment = default(Amount),
+        Period period = default(Period), Amount maximumAmountPeriod = default(Amount), Amount? maximumAmountPayment = default(Amount),
         string hashedCustomerIdentifier = default(string), TypeEnum type = TypeEnum.Enduring) : base()
     {
         // to ensure "flow" is required (not null)
@@ -68,9 +68,7 @@ public class EnduringConsentRequest : ConsentDetail, IEquatable<EnduringConsentR
         // to ensure "maximumAmountPeriod" is required (not null)
         MaximumAmountPeriod = maximumAmountPeriod ?? throw new BlinkInvalidValueException(
             "maximumAmountPeriod is a required property for EnduringConsentRequest and cannot be null");
-        // to ensure "maximumAmountPayment" is required (not null)
-        MaximumAmountPayment = maximumAmountPayment ?? throw new BlinkInvalidValueException(
-            "maximumAmountPayment is a required property for EnduringConsentRequest and cannot be null");
+        MaximumAmountPayment = maximumAmountPayment;
         ExpiryTimestamp = expiryTimestamp;
         Type = type;
         HashedCustomerIdentifier = hashedCustomerIdentifier;
@@ -105,10 +103,11 @@ public class EnduringConsentRequest : ConsentDetail, IEquatable<EnduringConsentR
     public Amount MaximumAmountPeriod { get; set; }
 
     /// <summary>
-    /// Gets or Sets MaximumAmountPayment
+    /// The optional per-payment maximum. When set, no single payment may exceed it, in addition to the
+    /// <see cref="MaximumAmountPeriod" /> cap. Absent on a consent with no per-payment maximum.
     /// </summary>
-    [DataMember(Name = "maximum_amount_payment", IsRequired = true, EmitDefaultValue = true)]
-    public Amount MaximumAmountPayment { get; set; }
+    [DataMember(Name = "maximum_amount_payment", EmitDefaultValue = false)]
+    public Amount? MaximumAmountPayment { get; set; }
 
     /// <summary>
     /// The hashed unique ID of the customer e.g. customer internal ID. SHA-256 is recommended.
