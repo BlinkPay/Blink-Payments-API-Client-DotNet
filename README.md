@@ -362,14 +362,16 @@ so a `null` surcharge alone does not mean surcharging was not applied.
 
 While a gateway consent is in `GatewayAwaitingSubmission`, `Consent.SurchargeOptions` holds a best-effort preview
 of the surcharge each payment method would add, under `Bank` and `Card`. Only methods you surcharge are included,
-and `Card` only when the consent can be paid by card; the preview is omitted if the rates cannot be looked up. For a single consent or quick payment each option previews
-`Surcharge` and `TotalCharge`; for an enduring consent it previews the raised maxima in `MaximumAmountPayment`
-(absent when the consent has no per-payment maximum) and `MaximumAmountPeriod`.
+and `Card` only when the consent can be paid by card; the preview is omitted if the rates cannot be looked up.
+For a single consent or quick payment each option previews `Surcharge` and `TotalCharge`; for an enduring
+consent it previews the raised maxima in `MaximumAmountPayment` (absent when the consent has no per-payment
+maximum) and `MaximumAmountPeriod`.
 
 ```csharp
 var consent = await client.GetSingleConsentAsync(consentId);
 var amount = consent.Detail.GetSingleConsentRequest().Amount;
-_logger.LogInformation("Surcharge: {}, total charge: {}", amount.Surcharge, amount.TotalCharge);
+var surcharge = amount.Surcharge;     // null when none was returned
+var totalCharge = amount.TotalCharge; // what the customer is charged
 
 var bankPreview = consent.SurchargeOptions?.Bank?.TotalCharge;
 ```

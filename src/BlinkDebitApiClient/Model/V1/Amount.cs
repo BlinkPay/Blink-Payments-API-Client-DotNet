@@ -93,7 +93,8 @@ public class Amount : IEquatable<Amount>, IValidatableObject
     /// The surcharge applied to the payment, where surcharging applies. Read-only: returned by Blink and never
     /// sent in a request, so a response amount can be reused in a request without the API rejecting it.
     /// </summary>
-    /// <value>The surcharge, or <c>null</c> when surcharging does not apply.</value>
+    /// <value>The surcharge, or <c>null</c> when none was returned. A zero surcharge on a gateway card payment is
+    /// omitted too, so <c>null</c> alone does not mean surcharging was not applied.</value>
     /// <example>&quot;0.68&quot;</example>
     [DataMember(Name = "surcharge", EmitDefaultValue = false)]
     public string? Surcharge { get; private set; }
@@ -103,21 +104,20 @@ public class Amount : IEquatable<Amount>, IValidatableObject
     /// On an enduring consent's maxima it is the raised maximum. Read-only: returned by Blink and never sent in a
     /// request.
     /// </summary>
-    /// <value>The total charge, or <c>null</c> when surcharging does not apply.</value>
+    /// <value>The total charge, or <c>null</c> when none was returned.</value>
     /// <example>&quot;100.68&quot;</example>
     [DataMember(Name = "total_charge", EmitDefaultValue = false)]
     public string? TotalCharge { get; private set; }
 
     /// <summary>
-    /// Keeps <see cref="Surcharge" /> out of serialised JSON.
+    /// Blink rejects <c>surcharge</c> and <c>total_charge</c> in a consent request, and <see cref="Amount" /> is
+    /// shared with the request models, so these response-only values are never serialised.
     /// </summary>
-    /// <returns>Always <c>false</c>.</returns>
     public bool ShouldSerializeSurcharge() => false;
 
     /// <summary>
-    /// Keeps <see cref="TotalCharge" /> out of serialised JSON.
+    /// See <see cref="ShouldSerializeSurcharge" />.
     /// </summary>
-    /// <returns>Always <c>false</c>.</returns>
     public bool ShouldSerializeTotalCharge() => false;
 
     /// <summary>
@@ -137,7 +137,8 @@ public class Amount : IEquatable<Amount>, IValidatableObject
     }
 
     /// <summary>
-    /// Returns the JSON string presentation of the object
+    /// Returns the JSON string presentation of the object. <see cref="Surcharge" /> and <see cref="TotalCharge" />
+    /// are response-only and omitted, so a round trip through this JSON drops them.
     /// </summary>
     /// <returns>JSON string presentation of the object</returns>
     public virtual string ToJson()
