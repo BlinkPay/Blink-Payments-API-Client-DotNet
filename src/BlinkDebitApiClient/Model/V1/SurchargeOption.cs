@@ -34,7 +34,7 @@ namespace BlinkDebitApiClient.Model.V1;
 /// What paying with one method would charge. On a single consent or quick payment it carries
 /// <see cref="Surcharge" /> and <see cref="TotalCharge" />; on an enduring consent it carries
 /// <see cref="MaximumAmountPayment" /> (absent when the consent has no per-payment maximum) and
-/// <see cref="MaximumAmountPeriod" />. Read-only: returned by Blink.
+/// <see cref="MaximumAmountPeriod" />. Response only; never sent in a request.
 /// </summary>
 [DataContract(Name = "surcharge_option")]
 public class SurchargeOption : IEquatable<SurchargeOption>, IValidatableObject
@@ -50,10 +50,10 @@ public class SurchargeOption : IEquatable<SurchargeOption>, IValidatableObject
     /// <summary>
     /// Initializes a new instance of the <see cref="SurchargeOption" /> class.
     /// </summary>
-    /// <param name="surcharge">Single consents and quick payments only. The surcharge that would apply for this payment method.</param>
-    /// <param name="totalCharge">Single consents and quick payments only. The total that would be charged (amount total + surcharge).</param>
-    /// <param name="maximumAmountPayment">Enduring consents only. How the per-payment maximum would be raised.</param>
-    /// <param name="maximumAmountPeriod">Enduring consents only. How the per-period maximum would be raised.</param>
+    /// <param name="surcharge">The surcharge.</param>
+    /// <param name="totalCharge">The total charge.</param>
+    /// <param name="maximumAmountPayment">The raised per-payment maximum.</param>
+    /// <param name="maximumAmountPeriod">The raised per-period maximum.</param>
     public SurchargeOption(string? surcharge = default(string),
         string? totalCharge = default(string),
         SurchargeDetail? maximumAmountPayment = default(SurchargeDetail),
@@ -66,27 +66,27 @@ public class SurchargeOption : IEquatable<SurchargeOption>, IValidatableObject
     }
 
     /// <summary>
-    /// Single consents and quick payments only. The surcharge that would apply for this payment method.
+    /// The surcharge that would apply for this payment method.
     /// </summary>
     /// <example>&quot;0.68&quot;</example>
     [DataMember(Name = "surcharge", EmitDefaultValue = false)]
     public string? Surcharge { get; set; }
 
     /// <summary>
-    /// Single consents and quick payments only. The total that would be charged (amount total + surcharge).
+    /// The total that would be charged (amount total + surcharge).
     /// </summary>
     /// <example>&quot;100.68&quot;</example>
     [DataMember(Name = "total_charge", EmitDefaultValue = false)]
     public string? TotalCharge { get; set; }
 
     /// <summary>
-    /// Enduring consents only. How the per-payment maximum would be raised.
+    /// How the per-payment maximum would be raised.
     /// </summary>
     [DataMember(Name = "maximum_amount_payment", EmitDefaultValue = false)]
     public SurchargeDetail? MaximumAmountPayment { get; set; }
 
     /// <summary>
-    /// Enduring consents only. How the per-period maximum would be raised.
+    /// How the per-period maximum would be raised.
     /// </summary>
     [DataMember(Name = "maximum_amount_period", EmitDefaultValue = false)]
     public SurchargeDetail? MaximumAmountPeriod { get; set; }

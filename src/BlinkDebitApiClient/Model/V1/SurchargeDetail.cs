@@ -32,7 +32,7 @@ namespace BlinkDebitApiClient.Model.V1;
 
 /// <summary>
 /// A surcharge and the total it gives, previewing one of an enduring consent's maxima.
-/// Read-only: returned by Blink.
+/// Response only; never sent in a request.
 /// </summary>
 [DataContract(Name = "surcharge_detail")]
 public class SurchargeDetail : IEquatable<SurchargeDetail>, IValidatableObject
@@ -48,8 +48,8 @@ public class SurchargeDetail : IEquatable<SurchargeDetail>, IValidatableObject
     /// <summary>
     /// Initializes a new instance of the <see cref="SurchargeDetail" /> class.
     /// </summary>
-    /// <param name="surcharge">The amount the maximum is raised by.</param>
-    /// <param name="totalCharge">The raised maximum (the maximum's total + surcharge).</param>
+    /// <param name="surcharge">The surcharge.</param>
+    /// <param name="totalCharge">The total charge.</param>
     public SurchargeDetail(string? surcharge = default(string),
         string? totalCharge = default(string))
     {

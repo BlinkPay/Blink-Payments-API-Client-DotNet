@@ -171,7 +171,7 @@ public class Consent : IEquatable<Consent>, IValidatableObject
 
     /// <summary>
     /// A best-effort preview of the surcharge each payment method would add, returned while a gateway consent is in
-    /// <see cref="StatusEnum.GatewayAwaitingSubmission" />. Read-only: returned by Blink.
+    /// <see cref="StatusEnum.GatewayAwaitingSubmission" />. Response only; never sent in a request.
     /// </summary>
     /// <value>The surcharge options, or <c>null</c> when surcharging does not apply or the rates are unavailable.</value>
     [DataMember(Name = "surcharge_options", EmitDefaultValue = false)]

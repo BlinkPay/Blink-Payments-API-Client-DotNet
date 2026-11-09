@@ -742,7 +742,8 @@ public class BlinkDebitClientTests : IDisposable
             {
                 // Note: PCR is not returned in payment details by the API
                 Assert.Null(paymentDetail.Pcr);
-                Assert.Equal(amount, paymentDetail.Amount);
+                Assert.Equal(amount.Total, paymentDetail.Amount.Total);
+                Assert.Equal(amount.Currency, paymentDetail.Amount.Currency);
             }
         }
 
@@ -923,7 +924,8 @@ public class BlinkDebitClientTests : IDisposable
         Assert.NotNull(paymentDetail);
         Assert.Equal(consentId, paymentDetail.ConsentId);
         Assert.Null(paymentDetail.Pcr);
-        Assert.Equal(amount, paymentDetail.Amount);
+        Assert.Equal(amount.Total, paymentDetail.Amount.Total);
+        Assert.Equal(amount.Currency, paymentDetail.Amount.Currency);
     }
 
     /// <summary>
@@ -1086,6 +1088,7 @@ public class BlinkDebitClientTests : IDisposable
         Assert.NotNull(paymentDetail);
         Assert.Equal(consentId, paymentDetail.ConsentId);
         Assert.Null(paymentDetail.Pcr);
-        Assert.Equal(amount, paymentDetail.Amount);
+        Assert.Equal(amount.Total, paymentDetail.Amount.Total);
+        Assert.Equal(amount.Currency, paymentDetail.Amount.Currency);
     }
 }

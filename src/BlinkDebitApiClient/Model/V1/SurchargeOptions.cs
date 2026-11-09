@@ -32,7 +32,7 @@ namespace BlinkDebitApiClient.Model.V1;
 /// <summary>
 /// A best-effort preview of the surcharge each payment method would add, returned while a gateway consent is in
 /// <c>GatewayAwaitingSubmission</c>. Only methods the merchant surcharges are included, card only when the consent
-/// can be paid by card. Read-only: returned by Blink.
+/// can be paid by card. Response only; never sent in a request.
 /// </summary>
 [DataContract(Name = "surcharge_options")]
 public class SurchargeOptions : IEquatable<SurchargeOptions>, IValidatableObject
@@ -48,8 +48,8 @@ public class SurchargeOptions : IEquatable<SurchargeOptions>, IValidatableObject
     /// <summary>
     /// Initializes a new instance of the <see cref="SurchargeOptions" /> class.
     /// </summary>
-    /// <param name="bank">The surcharge that would apply when paying via bank.</param>
-    /// <param name="card">The surcharge that would apply when paying via card. Single consents and quick payments only.</param>
+    /// <param name="bank">The bank option.</param>
+    /// <param name="card">The card option.</param>
     public SurchargeOptions(SurchargeOption? bank = default(SurchargeOption),
         SurchargeOption? card = default(SurchargeOption))
     {

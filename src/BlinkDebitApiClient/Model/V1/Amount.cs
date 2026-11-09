@@ -90,11 +90,10 @@ public class Amount : IEquatable<Amount>, IValidatableObject
     public string Total { get; set; }
 
     /// <summary>
-    /// The surcharge applied to the payment, where surcharging applies. Read-only: returned by Blink and never
-    /// sent in a request, so a response amount can be reused in a request without the API rejecting it.
+    /// The surcharge applied to the payment, or <c>null</c> when none was returned. Read-only: returned by Blink and
+    /// never sent in a request, so a response amount can be reused in a request. A zero surcharge on a gateway card
+    /// payment is omitted, so <c>null</c> alone does not mean surcharging was not applied.
     /// </summary>
-    /// <value>The surcharge, or <c>null</c> when none was returned. A zero surcharge on a gateway card payment is
-    /// omitted too, so <c>null</c> alone does not mean surcharging was not applied.</value>
     /// <example>&quot;0.68&quot;</example>
     [DataMember(Name = "surcharge", EmitDefaultValue = false)]
     public string? Surcharge { get; private set; }
@@ -211,9 +210,6 @@ public class Amount : IEquatable<Amount>, IValidatableObject
         }
     }
 
-    /// <summary>
-    /// Compiled regex pattern for validating the amount format of Total, Surcharge and TotalCharge.
-    /// </summary>
     private static readonly Regex RegexTotal = new Regex(@"^\d{1,13}\.\d{1,2}$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
 
