@@ -90,6 +90,36 @@ public class Amount : IEquatable<Amount>, IValidatableObject
     public string Total { get; set; }
 
     /// <summary>
+    /// The surcharge applied to the payment, or <c>null</c> when none was returned. Read-only: returned by Blink and
+    /// never sent in a request, so a response amount can be reused in a request. A zero surcharge on a gateway card
+    /// payment is omitted, so <c>null</c> alone does not mean surcharging was not applied.
+    /// </summary>
+    /// <example>&quot;0.68&quot;</example>
+    [DataMember(Name = "surcharge", EmitDefaultValue = false)]
+    public string? Surcharge { get; private set; }
+
+    /// <summary>
+    /// The total charged to the customer, inclusive of any surcharge (<see cref="Total" /> + <see cref="Surcharge" />).
+    /// On an enduring consent's maxima it is the raised maximum. Read-only: returned by Blink and never sent in a
+    /// request.
+    /// </summary>
+    /// <value>The total charge, or <c>null</c> when none was returned.</value>
+    /// <example>&quot;100.68&quot;</example>
+    [DataMember(Name = "total_charge", EmitDefaultValue = false)]
+    public string? TotalCharge { get; private set; }
+
+    /// <summary>
+    /// Blink rejects <c>surcharge</c> and <c>total_charge</c> in a consent request, and <see cref="Amount" /> is
+    /// shared with the request models, so these response-only values are never serialised.
+    /// </summary>
+    public bool ShouldSerializeSurcharge() => false;
+
+    /// <summary>
+    /// See <see cref="ShouldSerializeSurcharge" />.
+    /// </summary>
+    public bool ShouldSerializeTotalCharge() => false;
+
+    /// <summary>
     /// Returns the string presentation of the object
     /// </summary>
     /// <returns>String presentation of the object</returns>
@@ -99,12 +129,15 @@ public class Amount : IEquatable<Amount>, IValidatableObject
         sb.Append("class Amount {\n");
         sb.Append("  Total: ").Append(Total).Append('\n');
         sb.Append("  Currency: ").Append(Currency).Append('\n');
+        sb.Append("  Surcharge: ").Append(Surcharge).Append('\n');
+        sb.Append("  TotalCharge: ").Append(TotalCharge).Append('\n');
         sb.Append("}\n");
         return sb.ToString();
     }
 
     /// <summary>
-    /// Returns the JSON string presentation of the object
+    /// Returns the JSON string presentation of the object. <see cref="Surcharge" /> and <see cref="TotalCharge" />
+    /// are response-only and omitted, so a round trip through this JSON drops them.
     /// </summary>
     /// <returns>JSON string presentation of the object</returns>
     public virtual string ToJson()
@@ -143,7 +176,9 @@ public class Amount : IEquatable<Amount>, IValidatableObject
             (
                 Currency == input.Currency ||
                 Currency.Equals(input.Currency)
-            );
+            ) &&
+            Surcharge == input.Surcharge &&
+            TotalCharge == input.TotalCharge;
     }
 
     /// <summary>
@@ -161,13 +196,20 @@ public class Amount : IEquatable<Amount>, IValidatableObject
             }
 
             hashCode = (hashCode * 59) + Currency.GetHashCode();
+            if (Surcharge != null)
+            {
+                hashCode = (hashCode * 59) + Surcharge.GetHashCode();
+            }
+
+            if (TotalCharge != null)
+            {
+                hashCode = (hashCode * 59) + TotalCharge.GetHashCode();
+            }
+
             return hashCode;
         }
     }
 
-    /// <summary>
-    /// Compiled regex pattern for validating the Total amount format.
-    /// </summary>
     private static readonly Regex RegexTotal = new Regex(@"^\d{1,13}\.\d{1,2}$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
 
@@ -183,6 +225,18 @@ public class Amount : IEquatable<Amount>, IValidatableObject
         {
             yield return new ValidationResult("Invalid value for Total, must match a pattern of " + RegexTotal,
                 new[] { "Total" });
+        }
+
+        if (Surcharge != null && false == RegexTotal.Match(Surcharge).Success)
+        {
+            yield return new ValidationResult("Invalid value for Surcharge, must match a pattern of " + RegexTotal,
+                new[] { "Surcharge" });
+        }
+
+        if (TotalCharge != null && false == RegexTotal.Match(TotalCharge).Success)
+        {
+            yield return new ValidationResult("Invalid value for TotalCharge, must match a pattern of " + RegexTotal,
+                new[] { "TotalCharge" });
         }
     }
 }

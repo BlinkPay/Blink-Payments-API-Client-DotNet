@@ -170,6 +170,14 @@ public class Consent : IEquatable<Consent>, IValidatableObject
     public CardNetwork CardNetwork { get; set; }
 
     /// <summary>
+    /// A best-effort preview of the surcharge each payment method would add, returned while a gateway consent is in
+    /// <see cref="StatusEnum.GatewayAwaitingSubmission" />. Response only; never sent in a request.
+    /// </summary>
+    /// <value>The surcharge options, or <c>null</c> when surcharging does not apply or the rates are unavailable.</value>
+    [DataMember(Name = "surcharge_options", EmitDefaultValue = false)]
+    public SurchargeOptions? SurchargeOptions { get; set; }
+
+    /// <summary>
     /// Returns the string presentation of the object
     /// </summary>
     /// <returns>String presentation of the object</returns>
@@ -184,6 +192,7 @@ public class Consent : IEquatable<Consent>, IValidatableObject
         sb.Append("  Detail: ").Append(Detail).Append('\n');
         sb.Append("  Payments: ").Append(Payments).Append('\n');
         sb.Append("  CardNetwork: ").Append(CardNetwork).Append("\n");
+        sb.Append("  SurchargeOptions: ").Append(SurchargeOptions).Append('\n');
         sb.Append("}\n");
         return sb.ToString();
     }
@@ -254,6 +263,11 @@ public class Consent : IEquatable<Consent>, IValidatableObject
                 CardNetwork == input.CardNetwork ||
                 (CardNetwork != null &&
                  CardNetwork.Equals(input.CardNetwork))
+            ) &&
+            (
+                SurchargeOptions == input.SurchargeOptions ||
+                (SurchargeOptions != null &&
+                 SurchargeOptions.Equals(input.SurchargeOptions))
             );
     }
 
@@ -295,6 +309,11 @@ public class Consent : IEquatable<Consent>, IValidatableObject
             if (CardNetwork != null)
             {
                 hashCode = (hashCode * 59) + CardNetwork.GetHashCode();
+            }
+
+            if (SurchargeOptions != null)
+            {
+                hashCode = (hashCode * 59) + SurchargeOptions.GetHashCode();
             }
 
             return hashCode;

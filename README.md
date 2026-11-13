@@ -17,8 +17,9 @@
 7. [Configuration](#configuration)
 8. [Client Creation](#client-creation)
 9. [Request ID, Correlation ID and Idempotency Key](#request-id-correlation-id-and-idempotency-key)
-10. [Full Examples](#full-examples)
-11. [Individual API Call Examples](#individual-api-call-examples)
+10. [Surcharging](#surcharging)
+11. [Full Examples](#full-examples)
+12. [Individual API Call Examples](#individual-api-call-examples)
 
 ## Introduction
 This SDK allows merchants with .NET 10-based e-commerce sites to seamlessly integrate with Blink PayNow and Blink AutoPay in order to accept digital payments.
@@ -350,6 +351,34 @@ A request can have one request ID and one idempotency key but multiple correlati
 The idempotency key is what makes a retried creation safe, so it is worth supplying your own whenever
 your application — rather than the SDK — is the one retrying. See [Refund idempotency](#idempotency)
 for the rules that apply to `POST /refunds`; consent and payment creation take the same header.
+
+## Surcharging
+Where surcharging applies, `Amount` carries two read-only values returned by Blink: `Surcharge` and
+`TotalCharge` (the amount plus the surcharge, which is what the customer is charged). Read them from the
+`detail` amount of a single consent, quick payment or payment. On a surcharged enduring consent,
+`MaximumAmountPayment` and `MaximumAmountPeriod` carry them too, with `TotalCharge` being the raised maximum.
+Both are `null` when surcharging does not apply. A zero surcharge on a gateway card payment is omitted as well,
+so a `null` surcharge alone does not mean surcharging was not applied.
+
+While a gateway consent is in `GatewayAwaitingSubmission`, `Consent.SurchargeOptions` holds a best-effort preview
+of the surcharge each payment method would add, under `Bank` and `Card`. Only methods you surcharge are included,
+and `Card` only when the consent can be paid by card; the preview is omitted if the rates cannot be looked up.
+For a single consent or quick payment each option previews `Surcharge` and `TotalCharge`; for an enduring
+consent it previews the raised maxima in `MaximumAmountPayment` (absent when the consent has no per-payment
+maximum) and `MaximumAmountPeriod`.
+
+```csharp
+var consent = await client.GetSingleConsentAsync(consentId);
+var amount = consent.Detail.GetSingleConsentRequest().Amount;
+var surcharge = amount.Surcharge;     // null when none was returned
+var totalCharge = amount.TotalCharge; // what the customer is charged
+
+var bankPreview = consent.SurchargeOptions?.Bank?.TotalCharge;
+```
+
+These values are never sent in a request, so an amount taken from a response can be reused safely. See
+[Surcharging](https://merchants.blinkpay.co.nz/docs/debit/guides/surcharging) for when the surcharge is known and
+how it is calculated.
 
 ## Full Examples
 > **Note:** For error handling, a BlinkServiceException can be caught.

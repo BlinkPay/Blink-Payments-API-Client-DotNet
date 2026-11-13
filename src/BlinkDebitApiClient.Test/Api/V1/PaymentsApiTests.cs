@@ -143,7 +143,8 @@ public class PaymentsApiTests : IDisposable
         Assert.NotNull(detail);
         Assert.Equal(consentId, detail.ConsentId);
         Assert.Null(detail.Pcr);
-        Assert.Equal(amount, detail.Amount);
+        Assert.Equal(amount.Total, detail.Amount.Total);
+        Assert.Equal(amount.Currency, detail.Amount.Currency);
     }
 
     /// <summary>
@@ -211,6 +212,7 @@ public class PaymentsApiTests : IDisposable
         Assert.NotNull(detail);
         Assert.Equal(consentId, detail.ConsentId);
         Assert.Equal(pcr, detail.Pcr);
-        Assert.Equal(amount, detail.Amount);
+        Assert.Equal(amount.Total, detail.Amount.Total);
+        Assert.Equal(amount.Currency, detail.Amount.Currency);
     }
 }
